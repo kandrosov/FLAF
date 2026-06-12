@@ -47,6 +47,23 @@ class Task(law.Task):
     model = luigi.Parameter(default="")
     user_custom = luigi.Parameter(default="")
 
+    # Convenience for "run on pre-produced central AnaTuples".
+    # When set on a command (e.g. --ana_tuple_version v2605a), tasks that produce
+    # or consume AnaTuples (AnaProd/* + the Hist/Analysis tasks that depend on them)
+    # will use this as the effective version for AnaTuple* tasks.
+    # This avoids having to spell out --AnaTupleFileListTask-version, --AnaTupleMergeTask-version,
+    # --AnalysisCacheTask-version etc. individually, and prevents version skew between
+    # the different pre-anaTuple tasks in the presence of --bundle.
+    ana_tuple_version = luigi.Parameter(
+        default="",
+        significant=False,
+        description="If set, forces the version used for all upstream AnaTuple/AnaProd tasks "
+        "(InputFileTask, AnaTupleFile*, AnaTuple*List*, AnaTupleMerge, and the "
+        "AnaTupleFileList requirements from Hist/AnalysisCache tasks). "
+        "Falls back to the task's own 'version'. Intended for --bundle runs against "
+        "central pre-produced AnaTuples while your own --version is used for final outputs.",
+    )
+
     def __init__(self, *args, **kwargs):
         super(Task, self).__init__(*args, **kwargs)
         user_custom_file = None
@@ -126,6 +143,11 @@ class Task(law.Task):
 
     def ana_data_path(self):
         return os.getenv("ANALYSIS_DATA_PATH")
+
+    @property
+    def ana_version(self):
+        """Effective version to use for AnaTuple-related tasks (respects ana_tuple_version override)."""
+        return self.ana_tuple_version or self.version
 
     def local_path(self, *path):
         parts = (self.ana_data_path(),) + self.store_parts() + path

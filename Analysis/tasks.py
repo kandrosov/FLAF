@@ -25,19 +25,22 @@ class HistTupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 
     def workflow_requires(self):
         reqs = super().workflow_requires()
+        ana_v = self.ana_version
         merge_organization_complete = AnaTupleFileListTask.req(
-            self, branches=()
+            self, version=ana_v, branches=()
         ).complete()
         if not merge_organization_complete:
             req_dict = {
                 "AnaTupleFileListTask": AnaTupleFileListTask.req(
                     self,
+                    version=ana_v,
                     branches=(),
                     max_runtime=AnaTupleFileListTask.max_runtime._default,
                     n_cpus=AnaTupleFileListTask.n_cpus._default,
                 ),
                 "AnaTupleMergeTask": AnaTupleMergeTask.req(
                     self,
+                    version=ana_v,
                     branches=(),
                     max_runtime=AnaTupleMergeTask.max_runtime._default,
                     n_cpus=AnaTupleMergeTask.n_cpus._default,
@@ -63,6 +66,7 @@ class HistTupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
                             branches=(),
                             customisations=self.customisations,
                             producer_to_run=producer_to_run,
+                            ana_tuple_version=self.ana_tuple_version,
                         )
                     )
 
@@ -423,12 +427,14 @@ class HistFromNtupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 
     def workflow_requires(self):
         reqs = super().workflow_requires()
+        ana_v = self.ana_version
         merge_organization_complete = AnaTupleFileListTask.req(
-            self, branches=()
+            self, version=ana_v, branches=()
         ).complete()
         if not merge_organization_complete:
             reqs["AnaTupleFileListTask"] = AnaTupleFileListTask.req(
                 self,
+                version=ana_v,
                 branches=(),
                 max_runtime=AnaTupleFileListTask.max_runtime._default,
                 n_cpus=AnaTupleFileListTask.n_cpus._default,
@@ -595,13 +601,15 @@ class HistMergerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
     def workflow_requires(self):
         reqs = super().workflow_requires()
         branch_map = self.create_branch_map()
+        ana_v = self.ana_version
 
         merge_organization_complete = AnaTupleFileListTask.req(
-            self, branches=()
+            self, version=ana_v, branches=()
         ).complete()
         if not merge_organization_complete:
             reqs["AnaTupleFileListTask"] = AnaTupleFileListTask.req(
                 self,
+                version=ana_v,
                 branches=(),
                 max_runtime=AnaTupleFileListTask.max_runtime._default,
                 n_cpus=AnaTupleFileListTask.n_cpus._default,
@@ -830,19 +838,22 @@ class AnalysisCacheTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 
     def workflow_requires(self):
         reqs = super().workflow_requires()
+        ana_v = self.ana_version
         merge_organization_complete = AnaTupleFileListTask.req(
-            self, branches=()
+            self, version=ana_v, branches=()
         ).complete()
         if not merge_organization_complete:
             req_dict = {
                 "AnaTupleFileListTask": AnaTupleFileListTask.req(
                     self,
+                    version=ana_v,
                     branches=(),
                     max_runtime=AnaTupleFileListTask.max_runtime._default,
                     n_cpus=AnaTupleFileListTask.n_cpus._default,
                 ),
                 "AnaTupleMergeTask": AnaTupleMergeTask.req(
                     self,
+                    version=ana_v,
                     branches=(),
                     max_runtime=AnaTupleMergeTask.max_runtime._default,
                     n_cpus=AnaTupleMergeTask.n_cpus._default,
@@ -1064,8 +1075,9 @@ class HistPlotTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 
     def workflow_requires(self):
         reqs = super().workflow_requires()
+        ana_v = self.ana_version
         merge_organization_complete = AnaTupleFileListTask.req(
-            self, branches=()
+            self, version=ana_v, branches=()
         ).complete()
         if not merge_organization_complete:
             reqs["HistMergerTask"] = HistMergerTask.req(
@@ -1073,6 +1085,7 @@ class HistPlotTask(Task, HTCondorWorkflow, law.LocalWorkflow):
             )
             reqs["AnaTupleFileListTask"] = AnaTupleFileListTask.req(
                 self,
+                version=ana_v,
                 branches=(),
                 max_runtime=AnaTupleFileListTask.max_runtime._default,
                 n_cpus=AnaTupleFileListTask.n_cpus._default,
@@ -1273,13 +1286,15 @@ class AnalysisCacheAggregationTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 
     def workflow_requires(self):
         reqs = super().workflow_requires()
+        ana_v = self.ana_version
         merge_organization_complete = AnaTupleFileListTask.req(
-            self, branches=()
+            self, version=ana_v, branches=()
         ).complete()
         payload_producers = self.global_params["payload_producers"]
         if not merge_organization_complete:
             reqs["AnaTupleFileListTask"] = AnaTupleFileListTask.req(
                 self,
+                version=ana_v,
                 branches=(),
                 max_runtime=AnaTupleFileListTask.max_runtime._default,
                 n_cpus=AnaTupleFileListTask.n_cpus._default,
