@@ -290,9 +290,7 @@ class HistTupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 
     @law.dynamic_workflow_condition
     def workflow_condition(self):
-        ana_v = (
-            self.ana_version or self.anaTuple_version or self.version or self.version
-        )
+        ana_v = self.ana_version or self.anaTuple_version or self.version
         return AnaTupleFileListTask.req(
             self, version=ana_v, branch=-1, branches=()
         ).complete()
@@ -303,12 +301,12 @@ class HistTupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 
         n = 0
         branches = {}
-        ana_v = (
-            self.ana_version or self.anaTuple_version or self.version or self.version
-        )
+        ana_v = self.ana_version or self.anaTuple_version or self.version
         anaProd_branch_map = AnaTupleMergeTask.req(
             self, version=ana_v, branch=-1, branches=()
         ).create_branch_map()
+        if not isinstance(anaProd_branch_map, dict):
+            anaProd_branch_map = {}
 
         datasets_to_consider = [
             key
@@ -355,7 +353,7 @@ class HistTupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
             skip_future_tasks,
             runs,
         ) in anaProd_branch_map.items():
-            if skip_future_tasks:
+            if skip_future_tasks and not (self.anaTuple_version or self.ana_version):
                 continue
             if dataset_name not in datasets_to_consider:
                 continue
@@ -524,9 +522,7 @@ class HistFromNtupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 
     def workflow_requires(self):
         reqs = super().workflow_requires()
-        ana_v = (
-            self.ana_version or self.anaTuple_version or self.version or self.version
-        )
+        ana_v = self.ana_version or self.anaTuple_version or self.version
         merge_organization_complete = AnaTupleFileListTask.req(
             self, version=ana_v, branches=()
         ).complete()
@@ -581,9 +577,7 @@ class HistFromNtupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 
     @law.dynamic_workflow_condition
     def workflow_condition(self):
-        ana_v = (
-            self.ana_version or self.anaTuple_version or self.version or self.version
-        )
+        ana_v = self.ana_version or self.anaTuple_version or self.version
         return AnaTupleFileListTask.req(
             self, version=ana_v, branch=-1, branches=()
         ).complete()
@@ -724,9 +718,7 @@ class HistMergerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
     def workflow_requires(self):
         reqs = super().workflow_requires()
         branch_map = self.create_branch_map()
-        ana_v = (
-            self.ana_version or self.anaTuple_version or self.version or self.version
-        )
+        ana_v = self.ana_version or self.anaTuple_version or self.version
 
         merge_organization_complete = AnaTupleFileListTask.req(
             self, version=ana_v, branches=()
@@ -781,9 +773,7 @@ class HistMergerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 
     @law.dynamic_workflow_condition
     def workflow_condition(self):
-        ana_v = (
-            self.ana_version or self.anaTuple_version or self.version or self.version
-        )
+        ana_v = self.ana_version or self.anaTuple_version or self.version
         return AnaTupleFileListTask.req(
             self, version=ana_v, branch=-1, branches=()
         ).complete()
@@ -976,9 +966,7 @@ class AnalysisCacheTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 
     def workflow_requires(self):
         reqs = super().workflow_requires()
-        ana_v = (
-            self.ana_version or self.anaTuple_version or self.version or self.version
-        )
+        ana_v = self.ana_version or self.anaTuple_version or self.version
         # If --anaTuple-version was specified on the command, prune the "AnaTupleFileList" bundle
         # at our version. The user is explicitly using a different version for the pre-ana/plan side,
         # so we must not require the bundle at our version (it would pull dev production of the plan).
@@ -1093,9 +1081,7 @@ class AnalysisCacheTask(Task, HTCondorWorkflow, law.LocalWorkflow):
         producer_dependencies = self.global_params["payload_producers"][
             self.producer_to_run
         ]["dependencies"]
-        ana_v = (
-            self.ana_version or self.anaTuple_version or self.version or self.version
-        )
+        ana_v = self.ana_version or self.anaTuple_version or self.version
         requirements = {
             "anaTuple": AnaTupleMergeTask.req(
                 self,
@@ -1121,9 +1107,7 @@ class AnalysisCacheTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 
     @law.dynamic_workflow_condition
     def workflow_condition(self):
-        ana_v = (
-            self.ana_version or self.anaTuple_version or self.version or self.version
-        )
+        ana_v = self.ana_version or self.anaTuple_version or self.version
         return AnaTupleFileListTask.req(
             self, version=ana_v, branch=-1, branches=()
         ).complete()
@@ -1265,9 +1249,7 @@ class HistPlotTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 
     def workflow_requires(self):
         reqs = super().workflow_requires()
-        ana_v = (
-            self.ana_version or self.anaTuple_version or self.version or self.version
-        )
+        ana_v = self.ana_version or self.anaTuple_version or self.version
         merge_organization_complete = AnaTupleFileListTask.req(
             self, version=ana_v, branches=()
         ).complete()
@@ -1340,9 +1322,7 @@ class HistPlotTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 
     @law.dynamic_workflow_condition
     def workflow_condition(self):
-        ana_v = (
-            self.ana_version or self.anaTuple_version or self.version or self.version
-        )
+        ana_v = self.ana_version or self.anaTuple_version or self.version
         return AnaTupleFileListTask.req(
             self, version=ana_v, branch=-1, branches=()
         ).complete()
@@ -1514,18 +1494,14 @@ class AnalysisCacheAggregationTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 
     @law.dynamic_workflow_condition
     def workflow_condition(self):
-        ana_v = (
-            self.ana_version or self.anaTuple_version or self.version or self.version
-        )
+        ana_v = self.ana_version or self.anaTuple_version or self.version
         return AnaTupleFileListTask.req(
             self, version=ana_v, branch=-1, branches=()
         ).complete()
 
     def workflow_requires(self):
         reqs = super().workflow_requires()
-        ana_v = (
-            self.ana_version or self.anaTuple_version or self.version or self.version
-        )
+        ana_v = self.ana_version or self.anaTuple_version or self.version
         merge_organization_complete = AnaTupleFileListTask.req(
             self, version=ana_v, branches=()
         ).complete()
@@ -1576,9 +1552,7 @@ class AnalysisCacheAggregationTask(Task, HTCondorWorkflow, law.LocalWorkflow):
         # I don't need to check here that this producer applies to target group
         # the reason is that if its in the branch map - it already was checked
         sample_name, list_of_producer_cache_keys = self.branch_data
-        ana_v = (
-            self.ana_version or self.anaTuple_version or self.version or self.version
-        )
+        ana_v = self.ana_version or self.anaTuple_version or self.version
         reqs = [
             AnalysisCacheTask.req(
                 self,
