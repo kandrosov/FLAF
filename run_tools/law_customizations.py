@@ -594,28 +594,41 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
 # bundle runs instead of the local AFS path under ANALYSIS_DATA_PATH.
 # The basename computation (stdall, stdall_Cluster_Proc, or stdall<postfix>) is
 # the same one used by stageout_logs.sh, so the URI will match the uploaded file.
-class _BundleAwareHTCondorWorkflowProxy(law.htcondor.HTCondorWorkflowProxy):
-    def _submit_group(self, *args, **kwargs):
-        job_ids, submission_data = super()._submit_group(*args, **kwargs)
-        for job_num, data in list(submission_data.items()):
-            if isinstance(job_num, Exception) or not isinstance(data, dict):
-                continue
-            cfg = data.get("config")
-            if cfg is None:
-                continue
-            rvars = getattr(cfg, "render_variables", {}) or {}
-            base = (
-                rvars.get("log_remote_base_url", "") if isinstance(rvars, dict) else ""
-            )
-            if base:
-                log = data.get("log")
-                if log:
-                    basename = os.path.basename(str(log))
-                    remote_log = base.rstrip("/") + "/" + basename
-                    data = dict(data)
-                    data["log"] = remote_log
-                    submission_data[job_num] = data
-        return job_ids, submission_data
+#
+# Guarded so that the dev FLAF source can be used with older law versions
+# that may not expose HTCondorWorkflowProxy (common when using flaf_dev.sh overlay
+# against an analysis's pinned flaf_env).
+try:
+    _HTCondorWorkflowProxyBase = law.htcondor.HTCondorWorkflowProxy
+except AttributeError:
+    _HTCondorWorkflowProxyBase = None
 
+if _HTCondorWorkflowProxyBase is not None:
 
-HTCondorWorkflow.workflow_proxy_cls = _BundleAwareHTCondorWorkflowProxy
+    class _BundleAwareHTCondorWorkflowProxy(_HTCondorWorkflowProxyBase):
+        def _submit_group(self, *args, **kwargs):
+            job_ids, submission_data = super()._submit_group(*args, **kwargs)
+            for job_num, data in list(submission_data.items()):
+                if isinstance(job_num, Exception) or not isinstance(data, dict):
+                    continue
+                cfg = data.get("config")
+                if cfg is None:
+                    continue
+                rvars = getattr(cfg, "render_variables", {}) or {}
+                base = (
+                    rvars.get("log_remote_base_url", "")
+                    if isinstance(rvars, dict)
+                    else ""
+                )
+                if base:
+                    log = data.get("log")
+                    if log:
+                        basename = os.path.basename(str(log))
+                        remote_log = base.rstrip("/") + "/" + basename
+                        data = dict(data)
+                        data["log"] = remote_log
+                        submission_data[job_num] = data
+            return job_ids, submission_data
+
+    HTCondorWorkflow.workflow_proxy_cls = _BundleAwareHTCondorWorkflowProxy
+# else: older law → keep the default behaviour (no custom remote log rewriting)
