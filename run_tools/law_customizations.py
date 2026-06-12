@@ -595,10 +595,15 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
 # The basename computation (stdall, stdall_Cluster_Proc, or stdall<postfix>) is
 # the same one used by stageout_logs.sh, so the URI will match the uploaded file.
 #
+<<<<<<< HEAD
 # We obtain the base proxy class via the workflow's workflow_proxy_cls extension
 # point (the stable way the concrete law version in use exposes its HTCondor proxy).
 # This ensures the exact code runs in CI (which uses the pinned flaf_env law) and
 # in production without version-specific guards or hidden fallbacks.
+=======
+# Use the stable extension point: obtain the base proxy class from whatever
+# the current law version has configured on HTCondorWorkflow.workflow_proxy_cls.
+>>>>>>> origin/main
 
 BundleAwareHTCondorWorkflowProxyBase = HTCondorWorkflow.workflow_proxy_cls
 
