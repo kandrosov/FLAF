@@ -685,14 +685,13 @@ class HistMergerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
             branches=(),
         ).complete()
         if not merge_organization_complete:
-            list_kwargs = {
-                "branches": (),
-                "max_runtime": AnaTupleFileListTask.max_runtime._default,
-                "n_cpus": AnaTupleFileListTask.n_cpus._default,
-            }
-            if ana_tuple_version:
-                list_kwargs["version"] = ana_tuple_version
-            reqs["AnaTupleFileListTask"] = AnaTupleFileListTask.req(self, **list_kwargs)
+            # FileList/Merge take care via __init__ (ana* from req copy will force their version if convenience used).
+            reqs["AnaTupleFileListTask"] = AnaTupleFileListTask.req(
+                self,
+                branches=(),
+                max_runtime=AnaTupleFileListTask.max_runtime._default,
+                n_cpus=AnaTupleFileListTask.n_cpus._default,
+            )
             reqs["HistFromNtupleProducerTask"] = HistFromNtupleProducerTask.req(
                 self,
                 branches=(),
@@ -910,11 +909,10 @@ class AnalysisCacheTask(Task, HTCondorWorkflow, law.LocalWorkflow):
         return law.LocalDirectoryTarget(self.local_path(self.producer_to_run))
 
     def __init__(self, *args, **kwargs):
-        # each task takes care of its version based on ana conveniences inherited from parent
-        if "version" not in kwargs:
-            ana_v = kwargs.get("ana_version") or kwargs.get("anaCache_version")
-            if ana_v:
-                kwargs["version"] = ana_v
+        # each task takes care of its version: if ana* present (from req copy), force version from it (over parent version copy).
+        ana_v = kwargs.get("ana_version") or kwargs.get("anaCache_version")
+        if ana_v:
+            kwargs["version"] = ana_v
         # Needed to get the config and ht_condor_pathways figured out
         super(AnalysisCacheTask, self).__init__(*args, **kwargs)
         self.n_cpus = self.global_params["payload_producers"][self.producer_to_run].get(
@@ -963,23 +961,20 @@ class AnalysisCacheTask(Task, HTCondorWorkflow, law.LocalWorkflow):
                     )
                 ]
         if not merge_organization_complete:
-            list_kwargs = {
-                "branches": (),
-                "max_runtime": AnaTupleFileListTask.max_runtime._default,
-                "n_cpus": AnaTupleFileListTask.n_cpus._default,
-            }
-            if ana_tuple_version:
-                list_kwargs["version"] = ana_tuple_version
-            merge_kwargs = {
-                "branches": (),
-                "max_runtime": AnaTupleMergeTask.max_runtime._default,
-                "n_cpus": AnaTupleMergeTask.n_cpus._default,
-            }
-            if ana_tuple_version:
-                merge_kwargs["version"] = ana_tuple_version
+            # FileList/Merge take care via __init__ (ana* from req copy will force their version if convenience used on this cache).
             req_dict = {
-                "AnaTupleFileListTask": AnaTupleFileListTask.req(self, **list_kwargs),
-                "AnaTupleMergeTask": AnaTupleMergeTask.req(self, **merge_kwargs),
+                "AnaTupleFileListTask": AnaTupleFileListTask.req(
+                    self,
+                    branches=(),
+                    max_runtime=AnaTupleFileListTask.max_runtime._default,
+                    n_cpus=AnaTupleFileListTask.n_cpus._default,
+                ),
+                "AnaTupleMergeTask": AnaTupleMergeTask.req(
+                    self,
+                    branches=(),
+                    max_runtime=AnaTupleMergeTask.max_runtime._default,
+                    n_cpus=AnaTupleMergeTask.n_cpus._default,
+                ),
             }
             # Get all the producers to require for this dummy branch
             producer_requires_set = set()
@@ -1439,11 +1434,10 @@ class AnalysisCacheAggregationTask(Task, HTCondorWorkflow, law.LocalWorkflow):
         return flavours
 
     def __init__(self, *args, **kwargs):
-        # each task takes care of its version based on ana conveniences inherited from parent
-        if "version" not in kwargs:
-            ana_v = kwargs.get("ana_version") or kwargs.get("anaCache_version")
-            if ana_v:
-                kwargs["version"] = ana_v
+        # each task takes care of its version: if ana* present (from req copy), force version from it (over parent version copy).
+        ana_v = kwargs.get("ana_version") or kwargs.get("anaCache_version")
+        if ana_v:
+            kwargs["version"] = ana_v
         super(AnalysisCacheAggregationTask, self).__init__(*args, **kwargs)
 
     @law.dynamic_workflow_condition

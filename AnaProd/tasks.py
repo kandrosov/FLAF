@@ -335,11 +335,11 @@ class AnaTupleFileListBuilderTask(Task, HTCondorWorkflow, law.LocalWorkflow):
     bundle_flavours = ["core", "inputFileList"]
 
     def __init__(self, *args, **kwargs):
-        # each task takes care of its version based on ana conveniences inherited from parent
-        if "version" not in kwargs:
-            ana_v = kwargs.get("ana_version") or kwargs.get("anaTuple_version")
-            if ana_v:
-                kwargs["version"] = ana_v
+        # each task takes care of its version: if ana* convenience present (auto-copied by req from parent or CLI),
+        # force it (over any parent .version that common_task_params always injects). Per-task CLI scoping wins when no ana*.
+        ana_v = kwargs.get("ana_version") or kwargs.get("anaTuple_version")
+        if ana_v:
+            kwargs["version"] = ana_v
         super(AnaTupleFileListBuilderTask, self).__init__(*args, **kwargs)
 
     _anaTuple_map_cache = None
@@ -505,11 +505,10 @@ class AnaTupleFileListTask(AnaTupleFileListBuilderTask):
     bundle_flavours = []
 
     def __init__(self, *args, **kwargs):
-        # each task takes care of its version based on ana conveniences inherited from parent
-        if "version" not in kwargs:
-            ana_v = kwargs.get("ana_version") or kwargs.get("anaTuple_version")
-            if ana_v:
-                kwargs["version"] = ana_v
+        # each task takes care of its version: if ana* present (from req copy), force version from it (over parent version copy).
+        ana_v = kwargs.get("ana_version") or kwargs.get("anaTuple_version")
+        if ana_v:
+            kwargs["version"] = ana_v
         kwargs["workflow"] = "local"
         super(AnaTupleFileListTask, self).__init__(*args, **kwargs)
 
@@ -552,11 +551,10 @@ class AnaTupleMergeTask(Task, HTCondorWorkflow, law.LocalWorkflow):
     bundle_flavours = ["core", "inputFileList", "AnaTupleFileList"]
 
     def __init__(self, *args, **kwargs):
-        # each task takes care of its version based on ana conveniences inherited from parent
-        if "version" not in kwargs:
-            ana_v = kwargs.get("ana_version") or kwargs.get("anaTuple_version")
-            if ana_v:
-                kwargs["version"] = ana_v
+        # each task takes care of its version: if ana* present (from req copy), force version from it (over parent version copy).
+        ana_v = kwargs.get("ana_version") or kwargs.get("anaTuple_version")
+        if ana_v:
+            kwargs["version"] = ana_v
         super(AnaTupleMergeTask, self).__init__(*args, **kwargs)
 
     def workflow_requires(self):
