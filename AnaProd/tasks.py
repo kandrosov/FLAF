@@ -345,13 +345,15 @@ class AnaTupleFileListBuilderTask(Task, HTCondorWorkflow, law.LocalWorkflow):
         return cls._anaTuple_map_cache
 
     def workflow_requires(self):
-        reqs = super().workflow_requires()
-        # When running on existing central AnaTuples (fs_anaTuple + production version override),
-        # our plan JSON already exists on the remote target. Do not declare the heavy per-file
-        # production requirements (AnaTupleFileTask + InputFileTask) — this is what was
-        # pulling InputFileTask into the graph for HistTupleProducerTask etc. with bundles.
+        # When the Builder's own outputs (plan + reports on fs_anaTuple at this version) already
+        # exist (central production case), we do not need to run this task at all.
+        # Return empty early (before super, which would pull bundles when --bundle is used,
+        # and before any production logic). This prevents bundle flavours like "inputFileList"
+        # (whose requires can pull InputFileTask) from being required for an "existent" Builder.
         if self.complete():
-            return reqs
+            return {}
+
+        reqs = super().workflow_requires()
 
         input_file_task_complete = InputFileTask.WF_complete(self)
         if not input_file_task_complete:
@@ -526,6 +528,11 @@ class AnaTupleMergeTask(Task, HTCondorWorkflow, law.LocalWorkflow):
     bundle_flavours = ["core", "inputFileList", "AnaTupleFileList"]
 
     def workflow_requires(self):
+        # If this merge's output already exists on the target (central for dev-on-existing),
+        # we don't need to run it or its bundles/production organization.
+        if self.complete():
+            return {}
+
         reqs = super().workflow_requires()
         merge_organization_complete = AnaTupleFileListTask.req(
             self, branches=()
