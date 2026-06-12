@@ -375,10 +375,12 @@ class AnaTupleFileListBuilderTask(Task, HTCondorWorkflow, law.LocalWorkflow):
         for idx, (dataset_name, process_group) in self.branch_map.items():
             branch_set |= self._get_branch_set_for_dataset(dataset_name, process_group)
 
-        ana_v = self.ana_version
+        # Use resolved self.version (set by our __init__ from ana* or by per-task CLI) for leaf FileTask.
+        # Controlled children would get auto via req copy, but leaf needs explicit version=.
+        version_for_leaf = self.version
         reqs["AnaTupleFileTask"] = AnaTupleFileTask.req(
             self,
-            version=ana_v,
+            version=version_for_leaf,
             branches=tuple(branch_set),
             max_runtime=AnaTupleFileTask.max_runtime._default,
             n_cpus=AnaTupleFileTask.n_cpus._default,
@@ -408,11 +410,11 @@ class AnaTupleFileListBuilderTask(Task, HTCondorWorkflow, law.LocalWorkflow):
         if not InputFileTask.WF_complete(self):
             return []
         branch_set = self._get_branch_set_for_dataset(dataset_name, process_group)
-        ana_v = self.ana_version
+        # leaf gets explicit from resolved version (set via ana in our __init__ or per-task for Builder)
         return [
             AnaTupleFileTask.req(
                 self,
-                version=ana_v,
+                version=self.version,
                 max_runtime=AnaTupleFileTask.max_runtime._default,
                 branch=prod_br,
                 branches=(prod_br,),
@@ -522,15 +524,16 @@ class AnaTupleFileListTask(AnaTupleFileListBuilderTask):
         # This prevents InputFileTask from appearing under an "existing" FileListTask
         # even when local input lists for the vXXXX slot are absent.
         reqs = {}
-        ana_v = self.ana_version
+        # Pass resolved version (from our __init__ or CLI) explicitly to sibling controlled Builder so its version matches even in pure per-task FileList case.
         reqs["AnaTupleFileListBuilderTask"] = AnaTupleFileListBuilderTask.req(
-            self, version=ana_v
+            self, version=self.version
         )
         return reqs
 
     def requires(self):
-        ana_v = self.ana_version
-        return AnaTupleFileListBuilderTask.req(self, version=ana_v)
+        # Builder is controlled; use req(self) so ana_version on self (if any) is auto-copied and Builder __init__ sets version.
+        # This also lets per-task version on the FileListTask instance propagate? For safety we pass the resolved version explicitly for the child controlled.
+        return AnaTupleFileListBuilderTask.req(self, version=self.version)
 
     def output(self):
         dataset_name, process_group = self.branch_data
@@ -563,14 +566,16 @@ class AnaTupleMergeTask(Task, HTCondorWorkflow, law.LocalWorkflow):
             return {}
 
         reqs = super().workflow_requires()
-        ana_v = self.ana_version
+        # For controlled AnaTupleFileListTask child: do not pass version= or ana*; let req(self) auto-copy ana* from self (if convenience), sub __init__ sets version; or per-task on FileList wins.
+        # For cases where we instantiated Merge via its --version (per-task), req auto + no explicit keeps child version scoping separate if specified, but to bind same as parent's resolved for internal, we can pass version=self.version .
+        # Per user guidance on ana params, we avoid explicit ana, use plain for controlled where possible; pass resolved version for tight coupling of internal list.
         merge_organization_complete = AnaTupleFileListTask.req(
-            self, branches=(), version=ana_v
+            self, branches=()
         ).complete()
         if not merge_organization_complete:
             reqs["AnaTupleFileListTask"] = AnaTupleFileListTask.req(
                 self,
-                version=ana_v,
+                version=self.version,
                 branches=(),
                 max_runtime=AnaTupleFileListTask.max_runtime._default,
                 n_cpus=AnaTupleFileListTask.n_cpus._default,
@@ -593,7 +598,7 @@ class AnaTupleMergeTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 
         reqs["AnaTupleFileListTask"] = AnaTupleFileListTask.req(
             self,
-            version=ana_v,
+            version=self.version,
             branches=tuple(branch_set),
             max_runtime=AnaTupleFileListTask.max_runtime._default,
             n_cpus=AnaTupleFileListTask.n_cpus._default,
@@ -620,9 +625,10 @@ class AnaTupleMergeTask(Task, HTCondorWorkflow, law.LocalWorkflow):
             return {"root": {}, "json": {}}
         if not InputFileTask.WF_complete(self):
             return {"root": {}, "json": {}}
-        ana_v = self.ana_version
+        # Leaf FileTask gets explicit version from our resolved self.version
+        version_for_leaf = self.version
         anaTuple_branch_map = AnaTupleFileTask.req(
-            self, version=ana_v, branch=-1, branches=()
+            self, version=version_for_leaf, branch=-1, branches=()
         ).create_branch_map()
         required_branches = {"root": {}}
         if not isinstance(anaTuple_branch_map, dict):
@@ -648,7 +654,7 @@ class AnaTupleMergeTask(Task, HTCondorWorkflow, law.LocalWorkflow):
                 required_branches[dependency_type][anaTuple_dataset_name].append(
                     AnaTupleFileTask.req(
                         self,
-                        version=ana_v,
+                        version=version_for_leaf,
                         max_runtime=AnaTupleFileTask.max_runtime._default,
                         branch=prod_br,
                         branches=(prod_br,),
@@ -672,7 +678,7 @@ class AnaTupleMergeTask(Task, HTCondorWorkflow, law.LocalWorkflow):
                     required_branches["json"][builder_dataset_name] = (
                         AnaTupleFileListBuilderTask.req(
                             self,
-                            version=ana_v,
+                            version=self.version,
                             max_runtime=AnaTupleFileListBuilderTask.max_runtime._default,
                             branch=builder_branch,
                             branches=(builder_branch,),
@@ -683,18 +689,16 @@ class AnaTupleMergeTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 
     @law.dynamic_workflow_condition
     def workflow_condition(self):
-        ana_v = self.ana_version
-        return AnaTupleFileListTask.req(
-            self, version=ana_v, branch=-1, branches=()
-        ).complete()
+        # Controlled FileList takes care; use req(self) to let ana* copy + its __init__, or its per-task version.
+        return AnaTupleFileListTask.req(self, branch=-1, branches=()).complete()
 
     @workflow_condition.create_branch_map
     def create_branch_map(self):
         branches = {}
         nBranch = 0
-        ana_v = self.ana_version
+        # Use req(self) for controlled FileList ds map; version via copy of ana* or per-task on FileList.
         ds_branch_map = AnaTupleFileListTask.req(
-            self, version=ana_v, branch=-1, branches=()
+            self, branch=-1, branches=()
         ).create_branch_map()
 
         ds_branches = {}
