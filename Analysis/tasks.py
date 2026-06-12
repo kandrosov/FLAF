@@ -22,7 +22,13 @@ from FLAF.Common.Utilities import getCustomisationSplit, ServiceThread
 class HistTupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
     max_runtime = copy_param(HTCondorWorkflow.max_runtime, 5.0)
     n_cpus = copy_param(HTCondorWorkflow.n_cpus, 4)
-    bundle_flavours = ["core", "AnaTupleFileList"]
+
+    @property
+    def bundle_flavours(self):
+        flavours = ["core", "AnaTupleFileList"]
+        if self.ana_tuple_version:
+            flavours = [f for f in flavours if f != "AnaTupleFileList"]
+        return flavours
 
     def workflow_requires(self):
         reqs = super().workflow_requires()
@@ -30,7 +36,7 @@ class HistTupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
         # If --anaTuple-version was specified on the command, prune the "AnaTupleFileList" bundle
         # at our version. The user is explicitly using a different version for the pre-ana/plan side,
         # so we must not require the bundle at our version (it would pull dev production of the plan).
-        if self.ana_tuple_version:
+        if self.anaTuple_version:
             if "bundles" in reqs:
                 reqs["bundles"] = [
                     b
@@ -466,7 +472,13 @@ class HistTupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 class HistFromNtupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
     max_runtime = copy_param(HTCondorWorkflow.max_runtime, 10.0)
     n_cpus = copy_param(HTCondorWorkflow.n_cpus, 2)
-    bundle_flavours = ["core", "AnaTupleFileList"]
+
+    @property
+    def bundle_flavours(self):
+        flavours = ["core", "AnaTupleFileList"]
+        if self.ana_tuple_version:
+            flavours = [f for f in flavours if f != "AnaTupleFileList"]
+        return flavours
 
     def workflow_requires(self):
         reqs = super().workflow_requires()
@@ -642,7 +654,13 @@ class HistFromNtupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 class HistMergerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
     max_runtime = copy_param(HTCondorWorkflow.max_runtime, 5.0)
     n_cpus = copy_param(HTCondorWorkflow.n_cpus, 2)
-    bundle_flavours = ["core", "AnaTupleFileList"]
+
+    @property
+    def bundle_flavours(self):
+        flavours = ["core", "AnaTupleFileList"]
+        if self.ana_tuple_version:
+            flavours = [f for f in flavours if f != "AnaTupleFileList"]
+        return flavours
 
     def workflow_requires(self):
         reqs = super().workflow_requires()
@@ -860,6 +878,8 @@ class AnalysisCacheTask(Task, HTCondorWorkflow, law.LocalWorkflow):
     @property
     def bundle_flavours(self):
         flavours = ["core", "AnaTupleFileList"]
+        if self.ana_tuple_version:
+            flavours = [f for f in flavours if f != "AnaTupleFileList"]
         if (
             self.global_params.get("payload_producers", {})
             .get(self.producer_to_run, {})
@@ -891,7 +911,7 @@ class AnalysisCacheTask(Task, HTCondorWorkflow, law.LocalWorkflow):
         # If --anaTuple-version was specified on the command, prune the "AnaTupleFileList" bundle
         # at our version. The user is explicitly using a different version for the pre-ana/plan side,
         # so we must not require the bundle at our version (it would pull dev production of the plan).
-        if self.ana_tuple_version:
+        if self.anaTuple_version:
             if "bundles" in reqs:
                 reqs["bundles"] = [
                     b
@@ -1150,7 +1170,13 @@ class AnalysisCacheTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 class HistPlotTask(Task, HTCondorWorkflow, law.LocalWorkflow):
     max_runtime = copy_param(HTCondorWorkflow.max_runtime, 2.0)
     n_cpus = copy_param(HTCondorWorkflow.n_cpus, 1)
-    bundle_flavours = ["core", "AnaTupleFileList"]
+
+    @property
+    def bundle_flavours(self):
+        flavours = ["core", "AnaTupleFileList"]
+        if self.ana_tuple_version:
+            flavours = [f for f in flavours if f != "AnaTupleFileList"]
+        return flavours
 
     def workflow_requires(self):
         reqs = super().workflow_requires()
@@ -1357,7 +1383,13 @@ class AnalysisCacheAggregationTask(Task, HTCondorWorkflow, law.LocalWorkflow):
     max_runtime = copy_param(HTCondorWorkflow.max_runtime, 2.0)
     n_cpus = copy_param(HTCondorWorkflow.n_cpus, 1)
     producer_to_aggregate = luigi.Parameter()
-    bundle_flavours = ["core", "AnaTupleFileList"]
+
+    @property
+    def bundle_flavours(self):
+        flavours = ["core", "AnaTupleFileList"]
+        if self.ana_tuple_version:
+            flavours = [f for f in flavours if f != "AnaTupleFileList"]
+        return flavours
 
     def __init__(self, *args, **kwargs):
         super(AnalysisCacheAggregationTask, self).__init__(*args, **kwargs)
