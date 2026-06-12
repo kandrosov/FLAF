@@ -373,10 +373,9 @@ class AnaTupleFileListBuilderTask(Task, HTCondorWorkflow, law.LocalWorkflow):
         for idx, (dataset_name, process_group) in self.branch_map.items():
             branch_set |= self._get_branch_set_for_dataset(dataset_name, process_group)
 
-        version_for_leaf = self.version
         reqs["AnaTupleFileTask"] = AnaTupleFileTask.req(
             self,
-            version=version_for_leaf,
+            version=self.version,
             branches=tuple(branch_set),
             max_runtime=AnaTupleFileTask.max_runtime._default,
             n_cpus=AnaTupleFileTask.n_cpus._default,
@@ -611,10 +610,8 @@ class AnaTupleMergeTask(Task, HTCondorWorkflow, law.LocalWorkflow):
             return {"root": {}, "json": {}}
         if not InputFileTask.WF_complete(self):
             return {"root": {}, "json": {}}
-        # Leaf FileTask gets explicit version from our resolved self.version
-        version_for_leaf = self.version
         anaTuple_branch_map = AnaTupleFileTask.req(
-            self, version=version_for_leaf, branch=-1, branches=()
+            self, version=self.version, branch=-1, branches=()
         ).create_branch_map()
         required_branches = {"root": {}}
         if not isinstance(anaTuple_branch_map, dict):
@@ -640,7 +637,7 @@ class AnaTupleMergeTask(Task, HTCondorWorkflow, law.LocalWorkflow):
                 required_branches[dependency_type][anaTuple_dataset_name].append(
                     AnaTupleFileTask.req(
                         self,
-                        version=version_for_leaf,
+                        version=self.version,
                         max_runtime=AnaTupleFileTask.max_runtime._default,
                         branch=prod_br,
                         branches=(prod_br,),
