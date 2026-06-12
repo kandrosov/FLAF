@@ -598,10 +598,7 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
 # Guarded so that the dev FLAF source can be used with older law versions
 # that may not expose HTCondorWorkflowProxy (common when using flaf_dev.sh overlay
 # against an analysis's pinned flaf_env).
-try:
-    _HTCondorWorkflowProxyBase = law.htcondor.HTCondorWorkflowProxy
-except AttributeError:
-    _HTCondorWorkflowProxyBase = None
+_HTCondorWorkflowProxyBase = getattr(law.htcondor, "HTCondorWorkflowProxy", None)
 
 if _HTCondorWorkflowProxyBase is not None:
 
