@@ -47,8 +47,6 @@ class HistTupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
                         and getattr(b, "flavour", None) == "AnaTupleFileList"
                     )
                 ]
-        # The FileListTask will take care of its own version (using forwarded ana params if convenience set, or per-task CLI).
-        # Always forward the ana params; never pass version= here.
         merge_organization_complete = AnaTupleFileListTask.req(
             self,
             branches=(),
@@ -68,8 +66,6 @@ class HistTupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
                     )
                 ]
         if not merge_organization_complete:
-            # subs take care of their version via the ana* params we forward (if convenience set)
-            # do not pass version= ; let per-task CLI or the sub's __init__ logic decide
             req_dict = {
                 "AnaTupleFileListTask": AnaTupleFileListTask.req(
                     self,
@@ -147,7 +143,6 @@ class HistTupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
                             agg_dict[agg_name].add(aggr_br_idx)
 
         if len(branch_set) > 0:
-            # Merge takes care of its version (via inherited ana* copied by req + sub __init__)
             reqs["anaTuple"] = AnaTupleMergeTask.req(
                 self,
                 branches=tuple(branch_set),
@@ -248,8 +243,6 @@ class HistTupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 
     @law.dynamic_workflow_condition
     def workflow_condition(self):
-        # FileListTask takes care of its version (via ana* copied by .req if convenience set at self, or per-task CLI scoped version).
-        # No explicit version or ana* needed here; req(self) auto-copies params declared on base Task.
         return AnaTupleFileListTask.req(self, branch=-1, branches=()).complete()
 
     @workflow_condition.create_branch_map
@@ -258,7 +251,6 @@ class HistTupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 
         n = 0
         branches = {}
-        # MergeTask takes care of its version (ana* auto-copied by req if set on self; per-task CLI wins otherwise)
         anaProd_branch_map = AnaTupleMergeTask.req(
             self,
             branch=-1,
@@ -485,16 +477,11 @@ class HistFromNtupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 
     def workflow_requires(self):
         reqs = super().workflow_requires()
-        ana_tuple_version = self.ana_version or self.anaTuple_version
-        # Check without forcing version unless convenience set, so per-task --AnaTupleFileListTask-version wins.
-        # FileListTask takes care of its version via the forwarded ana params
         merge_organization_complete = AnaTupleFileListTask.req(
             self,
             branches=(),
         ).complete()
         if not merge_organization_complete:
-            # No version= here; AnaTupleFileListTask takes care via __init__ + ana* auto-copied by req(self) when --anaTuple-version etc used on self.
-            # This makes per-task --AnaTupleFileListTask-version win for the org check when no convenience ana* on top level.
             reqs["AnaTupleFileListTask"] = AnaTupleFileListTask.req(
                 self,
                 branches=(),
@@ -535,7 +522,6 @@ class HistFromNtupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 
     @law.dynamic_workflow_condition
     def workflow_condition(self):
-        # FileListTask takes care of its version (ana* auto-copied via req(self) when set on self, or per-task CLI).
         return AnaTupleFileListTask.req(
             self,
             branch=-1,
@@ -678,14 +664,11 @@ class HistMergerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
     def workflow_requires(self):
         reqs = super().workflow_requires()
         branch_map = self.create_branch_map()
-        ana_tuple_version = self.ana_version or self.anaTuple_version
-        # FileListTask takes care of its version via the forwarded ana params
         merge_organization_complete = AnaTupleFileListTask.req(
             self,
             branches=(),
         ).complete()
         if not merge_organization_complete:
-            # FileList/Merge take care via __init__ (ana* from req copy will force their version if convenience used).
             reqs["AnaTupleFileListTask"] = AnaTupleFileListTask.req(
                 self,
                 branches=(),
@@ -728,7 +711,6 @@ class HistMergerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 
     @law.dynamic_workflow_condition
     def workflow_condition(self):
-        # FileListTask takes care of its version (ana* auto-copied via req(self) when set on self, or per-task CLI).
         return AnaTupleFileListTask.req(
             self,
             branch=-1,
@@ -909,7 +891,6 @@ class AnalysisCacheTask(Task, HTCondorWorkflow, law.LocalWorkflow):
         return law.LocalDirectoryTarget(self.local_path(self.producer_to_run))
 
     def __init__(self, *args, **kwargs):
-        # each task takes care of its version: if ana* present (from req copy), force version from it (over parent version copy).
         ana_v = kwargs.get("ana_version") or kwargs.get("anaCache_version")
         if ana_v:
             kwargs["version"] = ana_v
@@ -941,7 +922,6 @@ class AnalysisCacheTask(Task, HTCondorWorkflow, law.LocalWorkflow):
                         and getattr(b, "flavour", None) == "AnaTupleFileList"
                     )
                 ]
-        # FileListTask takes care of its version via the forwarded ana params
         merge_organization_complete = AnaTupleFileListTask.req(
             self,
             branches=(),
@@ -961,7 +941,6 @@ class AnalysisCacheTask(Task, HTCondorWorkflow, law.LocalWorkflow):
                     )
                 ]
         if not merge_organization_complete:
-            # FileList/Merge take care via __init__ (ana* from req copy will force their version if convenience used on this cache).
             req_dict = {
                 "AnaTupleFileListTask": AnaTupleFileListTask.req(
                     self,
@@ -999,7 +978,6 @@ class AnalysisCacheTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 
         workflow_dict = {}
         ana_tuple_version = self.ana_version or self.anaTuple_version
-        # anaTuple_version handled by AnaTupleMergeTask.__init__ from auto-copied ana* (or per-task CLI); no if-version here.
         workflow_dict["anaTuple"] = {
             br_idx: AnaTupleMergeTask.req(
                 self,
@@ -1063,7 +1041,6 @@ class AnalysisCacheTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 
     @law.dynamic_workflow_condition
     def workflow_condition(self):
-        # FileListTask takes care of its version (ana* auto-copied via req(self) when set on self, or per-task CLI).
         return AnaTupleFileListTask.req(
             self,
             branch=-1,
@@ -1207,8 +1184,6 @@ class HistPlotTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 
     def workflow_requires(self):
         reqs = super().workflow_requires()
-        ana_tuple_version = self.ana_version or self.anaTuple_version
-        # FileListTask takes care of its version via the forwarded ana params
         merge_organization_complete = AnaTupleFileListTask.req(
             self,
             branches=(),
@@ -1267,7 +1242,6 @@ class HistPlotTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 
     @law.dynamic_workflow_condition
     def workflow_condition(self):
-        # FileListTask takes care of its version (ana* auto-copied via req(self) when set on self, or per-task CLI).
         return AnaTupleFileListTask.req(
             self,
             branch=-1,
@@ -1434,7 +1408,6 @@ class AnalysisCacheAggregationTask(Task, HTCondorWorkflow, law.LocalWorkflow):
         return flavours
 
     def __init__(self, *args, **kwargs):
-        # each task takes care of its version: if ana* present (from req copy), force version from it (over parent version copy).
         ana_v = kwargs.get("ana_version") or kwargs.get("anaCache_version")
         if ana_v:
             kwargs["version"] = ana_v
@@ -1442,7 +1415,6 @@ class AnalysisCacheAggregationTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 
     @law.dynamic_workflow_condition
     def workflow_condition(self):
-        # FileListTask takes care of its version (ana* auto-copied via req(self) when set on self, or per-task CLI).
         return AnaTupleFileListTask.req(
             self,
             branch=-1,
@@ -1451,8 +1423,6 @@ class AnalysisCacheAggregationTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 
     def workflow_requires(self):
         reqs = super().workflow_requires()
-        ana_tuple_version = self.ana_version or self.anaTuple_version
-        # FileListTask takes care of its version via the forwarded ana params
         merge_organization_complete = AnaTupleFileListTask.req(
             self,
             branches=(),

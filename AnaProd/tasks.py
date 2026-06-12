@@ -335,8 +335,6 @@ class AnaTupleFileListBuilderTask(Task, HTCondorWorkflow, law.LocalWorkflow):
     bundle_flavours = ["core", "inputFileList"]
 
     def __init__(self, *args, **kwargs):
-        # each task takes care of its version: if ana* convenience present (auto-copied by req from parent or CLI),
-        # force it (over any parent .version that common_task_params always injects). Per-task CLI scoping wins when no ana*.
         ana_v = kwargs.get("ana_version") or kwargs.get("anaTuple_version")
         if ana_v:
             kwargs["version"] = ana_v
@@ -375,8 +373,6 @@ class AnaTupleFileListBuilderTask(Task, HTCondorWorkflow, law.LocalWorkflow):
         for idx, (dataset_name, process_group) in self.branch_map.items():
             branch_set |= self._get_branch_set_for_dataset(dataset_name, process_group)
 
-        # Use resolved self.version (set by our __init__ from ana* or by per-task CLI) for leaf FileTask.
-        # Controlled children would get auto via req copy, but leaf needs explicit version=.
         version_for_leaf = self.version
         reqs["AnaTupleFileTask"] = AnaTupleFileTask.req(
             self,
@@ -505,7 +501,6 @@ class AnaTupleFileListTask(AnaTupleFileListBuilderTask):
     bundle_flavours = []
 
     def __init__(self, *args, **kwargs):
-        # each task takes care of its version: if ana* present (from req copy), force version from it (over parent version copy).
         ana_v = kwargs.get("ana_version") or kwargs.get("anaTuple_version")
         if ana_v:
             kwargs["version"] = ana_v
@@ -523,15 +518,12 @@ class AnaTupleFileListTask(AnaTupleFileListBuilderTask):
         # This prevents InputFileTask from appearing under an "existing" FileListTask
         # even when local input lists for the vXXXX slot are absent.
         reqs = {}
-        # Pass resolved version (from our __init__ or CLI) explicitly to sibling controlled Builder so its version matches even in pure per-task FileList case.
         reqs["AnaTupleFileListBuilderTask"] = AnaTupleFileListBuilderTask.req(
             self, version=self.version
         )
         return reqs
 
     def requires(self):
-        # Builder is controlled; use req(self) so ana_version on self (if any) is auto-copied and Builder __init__ sets version.
-        # This also lets per-task version on the FileListTask instance propagate? For safety we pass the resolved version explicitly for the child controlled.
         return AnaTupleFileListBuilderTask.req(self, version=self.version)
 
     def output(self):
@@ -551,7 +543,6 @@ class AnaTupleMergeTask(Task, HTCondorWorkflow, law.LocalWorkflow):
     bundle_flavours = ["core", "inputFileList", "AnaTupleFileList"]
 
     def __init__(self, *args, **kwargs):
-        # each task takes care of its version: if ana* present (from req copy), force version from it (over parent version copy).
         ana_v = kwargs.get("ana_version") or kwargs.get("anaTuple_version")
         if ana_v:
             kwargs["version"] = ana_v
@@ -564,9 +555,6 @@ class AnaTupleMergeTask(Task, HTCondorWorkflow, law.LocalWorkflow):
             return {}
 
         reqs = super().workflow_requires()
-        # For controlled AnaTupleFileListTask child: do not pass version= or ana*; let req(self) auto-copy ana* from self (if convenience), sub __init__ sets version; or per-task on FileList wins.
-        # For cases where we instantiated Merge via its --version (per-task), req auto + no explicit keeps child version scoping separate if specified, but to bind same as parent's resolved for internal, we can pass version=self.version .
-        # Per user guidance on ana params, we avoid explicit ana, use plain for controlled where possible; pass resolved version for tight coupling of internal list.
         merge_organization_complete = AnaTupleFileListTask.req(
             self, branches=()
         ).complete()
@@ -687,7 +675,6 @@ class AnaTupleMergeTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 
     @law.dynamic_workflow_condition
     def workflow_condition(self):
-        # Controlled FileList takes care; use req(self) to let ana* copy + its __init__, or its per-task version.
         return AnaTupleFileListTask.req(self, branch=-1, branches=()).complete()
 
     @workflow_condition.create_branch_map
