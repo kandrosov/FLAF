@@ -271,7 +271,7 @@ class HistTupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
             skip_future_tasks,
             runs,
         ) in anaProd_branch_map.items():
-            if skip_future_tasks and not (self.anaTuple_version or self.ana_version):
+            if skip_future_tasks:
                 continue
             if dataset_name not in datasets_to_consider:
                 continue
@@ -309,10 +309,6 @@ class HistTupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 
                         if applies_for_group:
                             aggregates_to_run.append(agg)
-
-                    if not producers_to_run and not aggregates_to_run:
-                        producers_to_run = producer_list
-                        aggregates_to_run = aggregate_list
 
                     branches[n] = (
                         dataset_name,
