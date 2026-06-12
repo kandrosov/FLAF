@@ -346,6 +346,13 @@ class AnaTupleFileListBuilderTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 
     def workflow_requires(self):
         reqs = super().workflow_requires()
+        # When running on existing central AnaTuples (fs_anaTuple + production version override),
+        # our plan JSON already exists on the remote target. Do not declare the heavy per-file
+        # production requirements (AnaTupleFileTask + InputFileTask) — this is what was
+        # pulling InputFileTask into the graph for HistTupleProducerTask etc. with bundles.
+        if self.complete():
+            return reqs
+
         input_file_task_complete = InputFileTask.WF_complete(self)
         if not input_file_task_complete:
             reqs["anaTuple"] = AnaTupleFileTask.req(self, branches=())
@@ -381,6 +388,11 @@ class AnaTupleFileListBuilderTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 
     def requires(self):
         dataset_name, process_group = self.branch_data
+        # Prune production sources when our plan already exists on the (central) target.
+        # Complements the workflow_requires early return; prevents the per-file AnaTupleFileTask
+        # (and thus their InputFileTask deps via workflow_condition) from appearing in the graph.
+        if self.complete():
+            return []
         if not InputFileTask.WF_complete(self):
             return []
         branch_set = self._get_branch_set_for_dataset(dataset_name, process_group)
@@ -552,6 +564,12 @@ class AnaTupleMergeTask(Task, HTCondorWorkflow, law.LocalWorkflow):
             skip_future_tasks,
             runs,
         ) = self.branch_data
+        # When the merged anaTuple already exists on the target (central for dev-on-existing-anaTuples,
+        # or after a previous successful merge), do not pull the per-file production (FileTask + InputFileTask).
+        # This (together with the Builder/List pruning) stops the unwanted InputFileTask deps from
+        # appearing in HistTupleProducerTask / cache graphs when using --AnaTuple*Task-version on central.
+        if self.complete():
+            return {"root": {}, "json": {}}
         if not InputFileTask.WF_complete(self):
             return {"root": {}, "json": {}}
         anaTuple_branch_map = AnaTupleFileTask.req(
