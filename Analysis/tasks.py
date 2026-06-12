@@ -26,6 +26,18 @@ class HistTupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
     def workflow_requires(self):
         reqs = super().workflow_requires()
         ana_v = self.ana_version
+        # Early prune based on Builder at ana_v (remote plan) -- more reliable for --anaTuple-version.
+        builder = AnaTupleFileListBuilderTask.req(self, version=ana_v, branches=())
+        if builder.complete():
+            if "bundles" in reqs:
+                reqs["bundles"] = [
+                    b
+                    for b in reqs.get("bundles", [])
+                    if not (
+                        hasattr(b, "flavour")
+                        and getattr(b, "flavour", None) == "AnaTupleFileList"
+                    )
+                ]
         merge_organization_complete = AnaTupleFileListTask.req(
             self, version=ana_v, branches=()
         ).complete()
@@ -874,6 +886,18 @@ class AnalysisCacheTask(Task, HTCondorWorkflow, law.LocalWorkflow):
     def workflow_requires(self):
         reqs = super().workflow_requires()
         ana_v = self.ana_version
+        # Early prune based on Builder at ana_v (remote plan) -- more reliable for --anaTuple-version.
+        builder = AnaTupleFileListBuilderTask.req(self, version=ana_v, branches=())
+        if builder.complete():
+            if "bundles" in reqs:
+                reqs["bundles"] = [
+                    b
+                    for b in reqs.get("bundles", [])
+                    if not (
+                        hasattr(b, "flavour")
+                        and getattr(b, "flavour", None) == "AnaTupleFileList"
+                    )
+                ]
         merge_organization_complete = AnaTupleFileListTask.req(
             self, version=ana_v, branches=()
         ).complete()
