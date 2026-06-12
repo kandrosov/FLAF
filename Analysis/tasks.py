@@ -26,7 +26,7 @@ class HistTupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
     @property
     def bundle_flavours(self):
         flavours = ["core", "AnaTupleFileList"]
-        if self.ana_tuple_version:
+        if self.anaTuple_version:
             flavours = [f for f in flavours if f != "AnaTupleFileList"]
         return flavours
 
@@ -200,7 +200,6 @@ class HistTupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
                 if producer_name not in deps:
                     anaCaches[producer_name] = AnalysisCacheTask.req(
                         self,
-                        version=ana_v,
                         max_runtime=AnalysisCacheTask.max_runtime._default,
                         branch=self.branch,
                         branches=(self.branch,),
@@ -219,7 +218,6 @@ class HistTupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
                     agg_dict[agg_name] = set()
                 aggr_task_branch_map = AnalysisCacheAggregationTask.req(
                     self,
-                    version=ana_v,
                     branch=-1,
                     producer_to_aggregate=agg_name,
                 ).create_branch_map()
@@ -238,7 +236,6 @@ class HistTupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
                         anaAggs[agg_name].append(
                             AnalysisCacheAggregationTask.req(
                                 self,
-                                version=ana_v,
                                 branch=br,
                                 customisations=self.customisations,
                                 producer_to_aggregate=agg_name,
@@ -476,7 +473,7 @@ class HistFromNtupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
     @property
     def bundle_flavours(self):
         flavours = ["core", "AnaTupleFileList"]
-        if self.ana_tuple_version:
+        if self.anaTuple_version:
             flavours = [f for f in flavours if f != "AnaTupleFileList"]
         return flavours
 
@@ -495,7 +492,10 @@ class HistFromNtupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
                 n_cpus=AnaTupleFileListTask.n_cpus._default,
             )
             reqs["HistTupleProducerTask"] = HistTupleProducerTask.req(
-                self, branches=(), customisations=self.customisations
+                self,
+                branches=(),
+                customisations=self.customisations,
+                anaTuple_version=self.anaTuple_version,
             )
             return reqs
         branch_set = set()
@@ -504,7 +504,10 @@ class HistFromNtupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
                 branch_set.update(prod_br_list)
         branches = tuple(branch_set)
         reqs["HistTupleProducerTask"] = HistTupleProducerTask.req(
-            self, branches=branches, customisations=self.customisations
+            self,
+            branches=branches,
+            customisations=self.customisations,
+            anaTuple_version=self.anaTuple_version,
         )
         return reqs
 
@@ -517,6 +520,7 @@ class HistFromNtupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
                 max_runtime=HistTupleProducerTask.max_runtime._default,
                 branch=prod_br,
                 customisations=self.customisations,
+                anaTuple_version=self.anaTuple_version,
             )
             for prod_br in prod_br_list
         )
@@ -538,7 +542,7 @@ class HistFromNtupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 
         dataset_to_branches = {}
         HistTupleBranchMap = HistTupleProducerTask.req(
-            self, branches=()
+            self, branches=(), anaTuple_version=self.anaTuple_version
         ).create_branch_map()
         for prod_br, (
             histTuple_dataset_name,
@@ -658,7 +662,7 @@ class HistMergerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
     @property
     def bundle_flavours(self):
         flavours = ["core", "AnaTupleFileList"]
-        if self.ana_tuple_version:
+        if self.anaTuple_version:
             flavours = [f for f in flavours if f != "AnaTupleFileList"]
         return flavours
 
@@ -681,6 +685,7 @@ class HistMergerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
             reqs["HistFromNtupleProducerTask"] = HistFromNtupleProducerTask.req(
                 self,
                 branches=(),
+                anaTuple_version=self.anaTuple_version,
             )
             return reqs
 
@@ -694,7 +699,7 @@ class HistMergerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
             new_branchset.update(all_datasets[var])
 
         reqs["HistFromNtupleProducerTask"] = HistFromNtupleProducerTask.req(
-            self, branches=list(new_branchset)
+            self, branches=list(new_branchset), anaTuple_version=self.anaTuple_version
         )
         return reqs
 
@@ -706,6 +711,7 @@ class HistMergerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
                 max_runtime=HistFromNtupleProducerTask.max_runtime._default,
                 branch=prod_br,
                 customisations=self.customisations,
+                anaTuple_version=self.anaTuple_version,
             )
             for prod_br in tuple(set(br_indices))
         ]
@@ -722,7 +728,7 @@ class HistMergerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
     @workflow_condition.create_branch_map
     def create_branch_map(self):
         HistFromNtupleProducerTask_branch_map = HistFromNtupleProducerTask.req(
-            self, branches=()
+            self, branches=(), anaTuple_version=self.anaTuple_version
         ).create_branch_map()
         all_datasets = {}
         branches = {}
@@ -878,7 +884,7 @@ class AnalysisCacheTask(Task, HTCondorWorkflow, law.LocalWorkflow):
     @property
     def bundle_flavours(self):
         flavours = ["core", "AnaTupleFileList"]
-        if self.ana_tuple_version:
+        if self.anaTuple_version:
             flavours = [f for f in flavours if f != "AnaTupleFileList"]
         if (
             self.global_params.get("payload_producers", {})
@@ -969,6 +975,7 @@ class AnalysisCacheTask(Task, HTCondorWorkflow, law.LocalWorkflow):
                     branches=(),
                     customisations=self.customisations,
                     producer_to_run=producer_name,
+                    anaTuple_version=self.anaTuple_version,
                 )
                 for producer_name in list(producer_requires_set)
                 if producer_name is not None
@@ -980,6 +987,7 @@ class AnalysisCacheTask(Task, HTCondorWorkflow, law.LocalWorkflow):
         workflow_dict["anaTuple"] = {
             br_idx: AnaTupleMergeTask.req(
                 self,
+                version=ana_v,
                 branch=prod_br,
                 branches=(),
                 max_runtime=AnaTupleMergeTask.max_runtime._default,
@@ -1018,9 +1026,11 @@ class AnalysisCacheTask(Task, HTCondorWorkflow, law.LocalWorkflow):
         producer_dependencies = self.global_params["payload_producers"][
             self.producer_to_run
         ]["dependencies"]
+        ana_v = self.ana_version
         requirements = {
             "anaTuple": AnaTupleMergeTask.req(
                 self,
+                version=ana_v,
                 branch=prod_br,
                 max_runtime=AnaTupleMergeTask.max_runtime._default,
                 branches=(),
@@ -1030,7 +1040,9 @@ class AnalysisCacheTask(Task, HTCondorWorkflow, law.LocalWorkflow):
         if producer_dependencies:
             for dependency in producer_dependencies:
                 anaCaches[dependency] = AnalysisCacheTask.req(
-                    self, producer_to_run=dependency
+                    self,
+                    producer_to_run=dependency,
+                    anaTuple_version=self.anaTuple_version,
                 )
         requirements["anaCaches"] = anaCaches
 
@@ -1046,7 +1058,7 @@ class AnalysisCacheTask(Task, HTCondorWorkflow, law.LocalWorkflow):
     @workflow_condition.create_branch_map
     def create_branch_map(self):
         branches = HistTupleProducerTask.req(
-            self, branch=-1, branches=()
+            self, branch=-1, branches=(), anaTuple_version=self.anaTuple_version
         ).create_branch_map()
         return branches
 
@@ -1174,7 +1186,7 @@ class HistPlotTask(Task, HTCondorWorkflow, law.LocalWorkflow):
     @property
     def bundle_flavours(self):
         flavours = ["core", "AnaTupleFileList"]
-        if self.ana_tuple_version:
+        if self.anaTuple_version:
             flavours = [f for f in flavours if f != "AnaTupleFileList"]
         return flavours
 
@@ -1186,7 +1198,10 @@ class HistPlotTask(Task, HTCondorWorkflow, law.LocalWorkflow):
         ).complete()
         if not merge_organization_complete:
             reqs["HistMergerTask"] = HistMergerTask.req(
-                self, branches=(), customisations=self.customisations
+                self,
+                branches=(),
+                customisations=self.customisations,
+                anaTuple_version=self.anaTuple_version,
             )
             reqs["AnaTupleFileListTask"] = AnaTupleFileListTask.req(
                 self,
@@ -1197,7 +1212,11 @@ class HistPlotTask(Task, HTCondorWorkflow, law.LocalWorkflow):
             )
             return reqs
         merge_map = HistMergerTask.req(
-            self, branch=-1, branches=(), customisations=self.customisations
+            self,
+            branch=-1,
+            branches=(),
+            customisations=self.customisations,
+            anaTuple_version=self.anaTuple_version,
         ).create_branch_map()
 
         branch_set = set()
@@ -1210,6 +1229,7 @@ class HistPlotTask(Task, HTCondorWorkflow, law.LocalWorkflow):
             self,
             branches=tuple(branch_set),
             customisations=self.customisations,
+            anaTuple_version=self.anaTuple_version,
         )
         return reqs
 
@@ -1217,7 +1237,11 @@ class HistPlotTask(Task, HTCondorWorkflow, law.LocalWorkflow):
         var = self.branch_data
 
         merge_map = HistMergerTask.req(
-            self, branch=-1, branches=(), customisations=self.customisations
+            self,
+            branch=-1,
+            branches=(),
+            customisations=self.customisations,
+            anaTuple_version=self.anaTuple_version,
         ).create_branch_map()
         merge_branch = next(br for br, (v, _, _) in merge_map.items() if v == var)
 
@@ -1225,6 +1249,7 @@ class HistPlotTask(Task, HTCondorWorkflow, law.LocalWorkflow):
             self,
             branch=merge_branch,
             customisations=self.customisations,
+            anaTuple_version=self.anaTuple_version,
             max_runtime=HistMergerTask.max_runtime._default,
         )
 
@@ -1239,7 +1264,11 @@ class HistPlotTask(Task, HTCondorWorkflow, law.LocalWorkflow):
     def create_branch_map(self):
         branches = {}
         merge_map = HistMergerTask.req(
-            self, branch=-1, branches=(), customisations=self.customisations
+            self,
+            branch=-1,
+            branches=(),
+            customisations=self.customisations,
+            anaTuple_version=self.anaTuple_version,
         ).create_branch_map()
         var_dict = {}
         for var in self.global_params["variables"]:
@@ -1387,7 +1416,7 @@ class AnalysisCacheAggregationTask(Task, HTCondorWorkflow, law.LocalWorkflow):
     @property
     def bundle_flavours(self):
         flavours = ["core", "AnaTupleFileList"]
-        if self.ana_tuple_version:
+        if self.anaTuple_version:
             flavours = [f for f in flavours if f != "AnaTupleFileList"]
         return flavours
 
@@ -1423,6 +1452,7 @@ class AnalysisCacheAggregationTask(Task, HTCondorWorkflow, law.LocalWorkflow):
                 n_cpus=AnalysisCacheTask.n_cpus._default,
                 customisations=self.customisations,
                 producer_to_run=self.producer_to_aggregate,
+                anaTuple_version=self.anaTuple_version,
             )
             return reqs
 
@@ -1441,6 +1471,7 @@ class AnalysisCacheAggregationTask(Task, HTCondorWorkflow, law.LocalWorkflow):
             n_cpus=AnalysisCacheTask.n_cpus._default,
             customisations=self.customisations,
             producer_to_run=self.producer_to_aggregate,
+            anaTuple_version=self.anaTuple_version,
         )
         return reqs
 
@@ -1448,6 +1479,7 @@ class AnalysisCacheAggregationTask(Task, HTCondorWorkflow, law.LocalWorkflow):
         # I don't need to check here that this producer applies to target group
         # the reason is that if its in the branch map - it already was checked
         sample_name, list_of_producer_cache_keys = self.branch_data
+        ana_v = self.ana_version
         reqs = [
             AnalysisCacheTask.req(
                 self,
@@ -1455,6 +1487,7 @@ class AnalysisCacheAggregationTask(Task, HTCondorWorkflow, law.LocalWorkflow):
                 branch=prod_br,
                 customisations=self.customisations,
                 producer_to_run=self.producer_to_aggregate,
+                anaTuple_version=self.anaTuple_version,
             )
             for prod_br in list_of_producer_cache_keys
         ]
@@ -1471,6 +1504,7 @@ class AnalysisCacheAggregationTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 
         payload_producers = self.global_params["payload_producers"]
         producer_cfg = payload_producers[self.producer_to_aggregate]
+        ana_v = self.ana_version
         producer_cache_branch_map = AnalysisCacheTask.req(
             self, branch=-1, branches=(), producer_to_run=self.producer_to_aggregate
         ).create_branch_map()
