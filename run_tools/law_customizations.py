@@ -38,7 +38,13 @@ class Task(law.Task):
     """
 
     version = luigi.Parameter()
-    prefer_params_cli = ["version", "anaTuple_version", "tasks_per_job"]
+    prefer_params_cli = [
+        "version",
+        "anaTuple_version",
+        "anaCache_version",
+        "ana_version",
+        "tasks_per_job",
+    ]
     period = luigi.Parameter()
     customisations = luigi.Parameter(default="")
     test = luigi.IntParameter(default=-1)
@@ -63,6 +69,25 @@ class Task(law.Task):
         "AnaTupleFileList requirements from Hist/AnalysisCache tasks). "
         "Falls back to the task's own 'version'. Intended for --bundle runs against "
         "central pre-produced AnaTuples while your own --version is used for final outputs.",
+    )
+
+    # Convenience for central pre-produced AnaCaches (post-AnaTuple payload producers).
+    anaCache_version = luigi.Parameter(
+        default="",
+        significant=False,
+        description="If set, forces the version used for AnalysisCacheTask and "
+        "AnalysisCacheAggregationTask (central pre-produced AnaCaches for BtagShape etc.). "
+        "Falls back to the task's own 'version'. Intended for --bundle runs against "
+        "central pre-produced AnaCaches while your own --version is used for final outputs.",
+    )
+
+    # Combined convenience for both central AnaTuples and central AnaCaches at the same version.
+    ana_version = luigi.Parameter(
+        default="",
+        significant=False,
+        description="If set, combines the effects of --anaTuple-version and --anaCache-version "
+        "(single flag for dev against central AnaTuples + AnaCaches at the same production version). "
+        "Falls back to the more specific --ana*-version or the task's own 'version'.",
     )
 
     def __init__(self, *args, **kwargs):
@@ -147,8 +172,26 @@ class Task(law.Task):
 
     @property
     def ana_version(self):
-        """Effective version to use for AnaTuple-related tasks (respects --anaTuple-version)."""
+        """Effective version to use for AnaTuple-related tasks (respects --ana-version or --anaTuple-version)."""
+        # Safe access to the 'ana_version' param value (same name as this property) to avoid recursion.
+        try:
+            v = object.__getattribute__(self, "ana_version")
+            if v:
+                return v
+        except AttributeError:
+            pass
         return self.anaTuple_version or self.version
+
+    @property
+    def ana_cache_version(self):
+        """Effective version to use for AnalysisCacheTask/AggregationTask (respects --ana-version or --anaCache-version)."""
+        try:
+            v = object.__getattribute__(self, "ana_version")
+            if v:
+                return v
+        except AttributeError:
+            pass
+        return self.anaCache_version or self.version
 
     def local_path(self, *path):
         parts = (self.ana_data_path(),) + self.store_parts() + path
@@ -595,15 +638,10 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
 # The basename computation (stdall, stdall_Cluster_Proc, or stdall<postfix>) is
 # the same one used by stageout_logs.sh, so the URI will match the uploaded file.
 #
-<<<<<<< HEAD
-# We obtain the base proxy class via the workflow's workflow_proxy_cls extension
-# point (the stable way the concrete law version in use exposes its HTCondor proxy).
-# This ensures the exact code runs in CI (which uses the pinned flaf_env law) and
-# in production without version-specific guards or hidden fallbacks.
-=======
 # Use the stable extension point: obtain the base proxy class from whatever
 # the current law version has configured on HTCondorWorkflow.workflow_proxy_cls.
->>>>>>> origin/main
+# This ensures the exact code runs in CI (which uses the pinned flaf_env law) and
+# in production without version-specific guards or hidden fallbacks.
 
 BundleAwareHTCondorWorkflowProxyBase = HTCondorWorkflow.workflow_proxy_cls
 
