@@ -271,11 +271,7 @@ class HistTupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
             skip_future_tasks,
             runs,
         ) in anaProd_branch_map.items():
-            # When using a different version for the pre-ana side (via convenience or per-task --AnaTuple*Task-version),
-            # the skip_future_tasks flag from the central plan does not apply to our post-ana processing.
-            ana_filelist = AnaTupleFileListTask.req(self, branches=())
-            using_external_preana = ana_filelist.version != self.version
-            if skip_future_tasks and not using_external_preana:
+            if skip_future_tasks and not (self.anaTuple_version or self.ana_version):
                 continue
             if dataset_name not in datasets_to_consider:
                 continue
