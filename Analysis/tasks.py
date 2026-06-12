@@ -33,10 +33,10 @@ class HistTupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
     def workflow_requires(self):
         reqs = super().workflow_requires()
         ana_tuple_v = (
-            self.ana_version or self.anaTuple_version or self.version or self.version
+            self.ana_version or self.anaTuple_version or self.version
         )
         ana_cache_v = (
-            self.ana_version or self.anaCache_version or self.version or self.version
+            self.ana_version or self.anaCache_version or self.version
         )
         # If --anaTuple-version (or --ana-version) was specified on the command, prune the "AnaTupleFileList" bundle
         # at our version. The user is explicitly using a different version for the pre-ana/plan side,
@@ -69,21 +69,24 @@ class HistTupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
                     )
                 ]
         if not merge_organization_complete:
+            ana_tuple_version = self.ana_version or self.anaTuple_version
+            list_kwargs = {
+                "branches": (),
+                "max_runtime": AnaTupleFileListTask.max_runtime._default,
+                "n_cpus": AnaTupleFileListTask.n_cpus._default,
+            }
+            if ana_tuple_version:
+                list_kwargs["version"] = ana_tuple_version
+            merge_kwargs = {
+                "branches": (),
+                "max_runtime": AnaTupleMergeTask.max_runtime._default,
+                "n_cpus": AnaTupleMergeTask.n_cpus._default,
+            }
+            if ana_tuple_version:
+                merge_kwargs["version"] = ana_tuple_version
             req_dict = {
-                "AnaTupleFileListTask": AnaTupleFileListTask.req(
-                    self,
-                    version=ana_tuple_v,
-                    branches=(),
-                    max_runtime=AnaTupleFileListTask.max_runtime._default,
-                    n_cpus=AnaTupleFileListTask.n_cpus._default,
-                ),
-                "AnaTupleMergeTask": AnaTupleMergeTask.req(
-                    self,
-                    version=ana_tuple_v,
-                    branches=(),
-                    max_runtime=AnaTupleMergeTask.max_runtime._default,
-                    n_cpus=AnaTupleMergeTask.n_cpus._default,
-                ),
+                "AnaTupleFileListTask": AnaTupleFileListTask.req(self, **list_kwargs),
+                "AnaTupleMergeTask": AnaTupleMergeTask.req(self, **merge_kwargs),
             }
             req_dict["AnalysisCacheTask"] = []
             var_produced_by = self.setup.var_producer_map
@@ -96,10 +99,11 @@ class HistTupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
                 else:
                     flatten_vars.add(var)
 
+            ana_cache_version = self.ana_version or self.anaCache_version
             for var_name in flatten_vars:
                 producer_to_run = var_produced_by.get(var_name, None)
                 if producer_to_run is not None:
-                    cache_req_kwargs = {
+                    cache_kwargs = {
                         "branches": (),
                         "customisations": self.customisations,
                         "producer_to_run": producer_to_run,
@@ -107,20 +111,20 @@ class HistTupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
                         "anaCache_version": self.anaCache_version,
                         "ana_version": self.ana_version,
                     }
-                    if ana_cache_v:
-                        cache_req_kwargs["version"] = ana_cache_v
+                    if ana_cache_version:
+                        cache_kwargs["version"] = ana_cache_version
                     req_dict["AnalysisCacheTask"].append(
-                        AnalysisCacheTask.req(self, **cache_req_kwargs)
+                        AnalysisCacheTask.req(self, **cache_kwargs)
                     )
 
             reqs.update(req_dict)
             return reqs
 
         ana_tuple_v = (
-            self.ana_version or self.anaTuple_version or self.version or self.version
+            self.ana_version or self.anaTuple_version or self.version
         )
         ana_cache_v = (
-            self.ana_version or self.anaCache_version or self.version or self.version
+            self.ana_version or self.anaCache_version or self.version
         )
         branch_set = set()
         branch_set_cache = set()
@@ -157,19 +161,22 @@ class HistTupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
                             agg_dict[agg_name].add(aggr_br_idx)
 
         if len(branch_set) > 0:
-            reqs["anaTuple"] = AnaTupleMergeTask.req(
-                self,
-                version=ana_tuple_v,
-                branches=tuple(branch_set),
-                customisations=self.customisations,
-                max_runtime=AnaTupleMergeTask.max_runtime._default,
-                n_cpus=AnaTupleMergeTask.n_cpus._default,
-            )
+            ana_tuple_version = self.ana_version or self.anaTuple_version
+            tuple_kwargs = {
+                "branches": tuple(branch_set),
+                "customisations": self.customisations,
+                "max_runtime": AnaTupleMergeTask.max_runtime._default,
+                "n_cpus": AnaTupleMergeTask.n_cpus._default,
+            }
+            if ana_tuple_version:
+                tuple_kwargs["version"] = ana_tuple_version
+            reqs["anaTuple"] = AnaTupleMergeTask.req(self, **tuple_kwargs)
 
         if len(branch_set_cache) > 0:
             reqs["analysisCache"] = []
+            ana_cache_version = self.ana_version or self.anaCache_version
             for producer_name in (p for p in producer_set if p is not None):
-                cache_req_kwargs = {
+                cache_kwargs = {
                     "branches": tuple(branch_set_cache),
                     "customisations": self.customisations,
                     "producer_to_run": producer_name,
@@ -177,15 +184,16 @@ class HistTupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
                     "anaCache_version": self.anaCache_version,
                     "ana_version": self.ana_version,
                 }
-                if ana_cache_v:
-                    cache_req_kwargs["version"] = ana_cache_v
+                if ana_cache_version:
+                    cache_kwargs["version"] = ana_cache_version
                 reqs["analysisCache"].append(
-                    AnalysisCacheTask.req(self, **cache_req_kwargs)
+                    AnalysisCacheTask.req(self, **cache_kwargs)
                 )
 
         reqs["aggregateCache"] = []
+        ana_cache_version = self.ana_version or self.anaCache_version
         for agg_name, agg_br_set in agg_dict.items():
-            agg_req_kwargs = {
+            agg_kwargs = {
                 "branches": tuple(agg_br_set),
                 "customisations": self.customisations,
                 "producer_to_aggregate": agg_name,
@@ -193,10 +201,10 @@ class HistTupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
                 "anaCache_version": self.anaCache_version,
                 "ana_version": self.ana_version,
             }
-            if ana_cache_v:
-                agg_req_kwargs["version"] = ana_cache_v
+            if ana_cache_version:
+                agg_kwargs["version"] = ana_cache_version
             reqs["aggregateCache"].append(
-                AnalysisCacheAggregationTask.req(self, **agg_req_kwargs)
+                AnalysisCacheAggregationTask.req(self, **agg_kwargs)
             )
 
         return reqs
@@ -205,27 +213,24 @@ class HistTupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
         dataset_name, prod_br, producer_list, aggregate_list, input_index = (
             self.branch_data
         )
-        ana_tuple_v = (
-            self.ana_version or self.anaTuple_version or self.version or self.version
-        )
-        ana_cache_v = (
-            self.ana_version or self.anaCache_version or self.version or self.version
-        )
+        ana_tuple_version = self.ana_version or self.anaTuple_version
+        ana_cache_version = self.ana_version or self.anaCache_version
+        tuple_kwargs = {
+            "max_runtime": AnaTupleMergeTask.max_runtime._default,
+            "branch": prod_br,
+            "branches": (prod_br,),
+            "customisations": self.customisations,
+        }
+        if ana_tuple_version:
+            tuple_kwargs["version"] = ana_tuple_version
         deps = {
-            "anaTuple": AnaTupleMergeTask.req(
-                self,
-                version=ana_tuple_v,
-                max_runtime=AnaTupleMergeTask.max_runtime._default,
-                branch=prod_br,
-                branches=(prod_br,),
-                customisations=self.customisations,
-            )
+            "anaTuple": AnaTupleMergeTask.req(self, **tuple_kwargs)
         }
         if len(producer_list) > 0:
             anaCaches = {}
             for producer_name in (p for p in producer_list if p is not None):
                 if producer_name not in deps:
-                    cache_req_kwargs = {
+                    cache_kwargs = {
                         "max_runtime": AnalysisCacheTask.max_runtime._default,
                         "branch": self.branch,
                         "branches": (self.branch,),
@@ -235,10 +240,10 @@ class HistTupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
                         "anaCache_version": self.anaCache_version,
                         "ana_version": self.ana_version,
                     }
-                    if ana_cache_v:
-                        cache_req_kwargs["version"] = ana_cache_v
+                    if ana_cache_version:
+                        cache_kwargs["version"] = ana_cache_version
                     anaCaches[producer_name] = AnalysisCacheTask.req(
-                        self, **cache_req_kwargs
+                        self, **cache_kwargs
                     )
             if len(anaCaches) > 0:
                 deps["anaCaches"] = anaCaches
@@ -253,8 +258,8 @@ class HistTupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
                     "branch": -1,
                     "producer_to_aggregate": agg_name,
                 }
-                if ana_cache_v:
-                    agg_discovery_kwargs["version"] = ana_cache_v
+                if ana_cache_version:
+                    agg_discovery_kwargs["version"] = ana_cache_version
                 aggr_task_branch_map = AnalysisCacheAggregationTask.req(
                     self, **agg_discovery_kwargs
                 ).create_branch_map()
@@ -278,11 +283,13 @@ class HistTupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
                             "anaCache_version": self.anaCache_version,
                             "ana_version": self.ana_version,
                         }
-                    if ana_cache_v:
-                        agg_req_kwargs["version"] = ana_cache_v
-                    anaAggs[agg_name].append(
-                        AnalysisCacheAggregationTask.req(self, **agg_req_kwargs)
-                    )
+                        if ana_cache_version:
+                            agg_req_kwargs["version"] = ana_cache_version
+                        anaAggs[agg_name].append(
+                            AnalysisCacheAggregationTask.req(
+                                self, **agg_req_kwargs
+                            )
+                        )
             if len(anaAggs) > 0:
                 deps["anaAggs"] = anaAggs
 
@@ -290,10 +297,14 @@ class HistTupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 
     @law.dynamic_workflow_condition
     def workflow_condition(self):
-        ana_v = self.ana_version or self.anaTuple_version or self.version
-        return AnaTupleFileListTask.req(
-            self, version=ana_v, branch=-1, branches=()
-        ).complete()
+        # Check the actual FileList (per-task CLI or convenience) so create only runs when the relevant org is complete.
+        # Force version only for convenience; otherwise let per-task win.
+        ana_tuple_version = self.ana_version or self.anaTuple_version
+        if ana_tuple_version:
+            return AnaTupleFileListTask.req(
+                self, version=ana_tuple_version, branch=-1, branches=()
+            ).complete()
+        return AnaTupleFileListTask.req(self, branch=-1, branches=()).complete()
 
     @workflow_condition.create_branch_map
     def create_branch_map(self):
@@ -301,10 +312,15 @@ class HistTupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 
         n = 0
         branches = {}
-        ana_v = self.ana_version or self.anaTuple_version or self.version
-        anaProd_branch_map = AnaTupleMergeTask.req(
-            self, version=ana_v, branch=-1, branches=()
-        ).create_branch_map()
+        ana_tuple_version = self.ana_version or self.anaTuple_version
+        if ana_tuple_version:
+            anaProd_branch_map = AnaTupleMergeTask.req(
+                self, version=ana_tuple_version, branch=-1, branches=()
+            ).create_branch_map()
+        else:
+            anaProd_branch_map = AnaTupleMergeTask.req(
+                self, branch=-1, branches=()
+            ).create_branch_map()
         if not isinstance(anaProd_branch_map, dict):
             anaProd_branch_map = {}
 
@@ -391,6 +407,10 @@ class HistTupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 
                         if applies_for_group:
                             aggregates_to_run.append(agg)
+
+                    if not producers_to_run and not aggregates_to_run:
+                        producers_to_run = producer_list
+                        aggregates_to_run = aggregate_list
 
                     branches[n] = (
                         dataset_name,
@@ -1580,7 +1600,7 @@ class AnalysisCacheAggregationTask(Task, HTCondorWorkflow, law.LocalWorkflow):
         payload_producers = self.global_params["payload_producers"]
         producer_cfg = payload_producers[self.producer_to_aggregate]
         ana_cache_v = (
-            self.ana_version or self.anaCache_version or self.version or self.version
+            self.ana_version or self.anaCache_version or self.version
         )
         cache_discovery_kwargs = {
             "branch": -1,
