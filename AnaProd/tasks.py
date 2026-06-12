@@ -334,6 +334,14 @@ class AnaTupleFileListBuilderTask(Task, HTCondorWorkflow, law.LocalWorkflow):
     n_cpus = copy_param(HTCondorWorkflow.n_cpus, 1)
     bundle_flavours = ["core", "inputFileList"]
 
+    def __init__(self, *args, **kwargs):
+        # each task takes care of its version based on ana conveniences inherited from parent
+        if "version" not in kwargs:
+            ana_v = kwargs.get("ana_version") or kwargs.get("anaTuple_version")
+            if ana_v:
+                kwargs["version"] = ana_v
+        super(AnaTupleFileListBuilderTask, self).__init__(*args, **kwargs)
+
     _anaTuple_map_cache = None
 
     @classmethod
@@ -495,6 +503,11 @@ class AnaTupleFileListTask(AnaTupleFileListBuilderTask):
     bundle_flavours = []
 
     def __init__(self, *args, **kwargs):
+        # each task takes care of its version based on ana conveniences inherited from parent
+        if "version" not in kwargs:
+            ana_v = kwargs.get("ana_version") or kwargs.get("anaTuple_version")
+            if ana_v:
+                kwargs["version"] = ana_v
         kwargs["workflow"] = "local"
         super(AnaTupleFileListTask, self).__init__(*args, **kwargs)
 
@@ -534,6 +547,14 @@ class AnaTupleMergeTask(Task, HTCondorWorkflow, law.LocalWorkflow):
     n_cpus = copy_param(HTCondorWorkflow.n_cpus, 2)
     delete_inputs_after_merge = luigi.BoolParameter(default=False)
     bundle_flavours = ["core", "inputFileList", "AnaTupleFileList"]
+
+    def __init__(self, *args, **kwargs):
+        # each task takes care of its version based on ana conveniences inherited from parent
+        if "version" not in kwargs:
+            ana_v = kwargs.get("ana_version") or kwargs.get("anaTuple_version")
+            if ana_v:
+                kwargs["version"] = ana_v
+        super(AnaTupleMergeTask, self).__init__(*args, **kwargs)
 
     def workflow_requires(self):
         # If this merge's output already exists on the target (central for dev-on-existing),
