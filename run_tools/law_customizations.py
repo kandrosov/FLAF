@@ -453,11 +453,17 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
 
     def workflow_requires(self):
         if self.bundle and self.bundle_flavours:
-            return {
-                "bundles": [
-                    BundleTask.req(self, flavour=f) for f in self.bundle_flavours
-                ]
-            }
+            bundles = []
+            for item in self.bundle_flavours:
+                if isinstance(item, (list, tuple)) and len(item) == 2:
+                    flavour, bversion = item
+                    bundles.append(
+                        BundleTask.req(self, flavour=flavour, version=bversion)
+                    )
+                else:
+                    flavour = item
+                    bundles.append(BundleTask.req(self, flavour=flavour))
+            return {"bundles": bundles}
         return {}
 
     def htcondor_check_job_completeness(self):
@@ -556,9 +562,14 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
                     "--bundle requires fs_default to be a remote filesystem (davs://, root://, …)"
                 )
             bundle_parts = []
-            for flavour in self.bundle_flavours:
+            for item in self.bundle_flavours:
+                if isinstance(item, (list, tuple)) and len(item) == 2:
+                    flavour, bversion = item
+                else:
+                    flavour = item
+                    bversion = self.version
                 bundle_url = self.remote_target(
-                    self.version, "bundles", self.period, f"{flavour}.tar.bz2"
+                    bversion, "bundles", self.period, f"{flavour}.tar.bz2"
                 ).uri()
                 bundle_parts.append(f"{flavour}:{bundle_url}")
             config.render_variables["bundle_list"] = " ".join(bundle_parts)

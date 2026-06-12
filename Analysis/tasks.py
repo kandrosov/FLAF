@@ -25,28 +25,15 @@ class HistTupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 
     @property
     def bundle_flavours(self):
-        flavours = ["core", "AnaTupleFileList"]
         if self.anaTuple_version or self.ana_version:
-            flavours = [f for f in flavours if f != "AnaTupleFileList"]
-        return flavours
+            v = self.ana_version or self.anaTuple_version
+            return ["core", ("AnaTupleFileList", v)]
+        return ["core", "AnaTupleFileList"]
 
     def workflow_requires(self):
         reqs = super().workflow_requires()
         ana_tuple_version = self.ana_version or self.anaTuple_version
         ana_cache_version = self.ana_version or self.anaCache_version
-        # If --anaTuple-version (or --ana-version) was specified on the command, prune the "AnaTupleFileList" bundle
-        # at our version. The user is explicitly using a different version for the pre-ana/plan side,
-        # so we must not require the bundle at our version (it would pull dev production of the plan).
-        if self.anaTuple_version or self.ana_version:
-            if "bundles" in reqs:
-                reqs["bundles"] = [
-                    b
-                    for b in reqs.get("bundles", [])
-                    if not (
-                        hasattr(b, "flavour")
-                        and getattr(b, "flavour", None) == "AnaTupleFileList"
-                    )
-                ]
         merge_organization_complete = AnaTupleFileListTask.req(
             self,
             branches=(),
@@ -470,10 +457,10 @@ class HistFromNtupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 
     @property
     def bundle_flavours(self):
-        flavours = ["core", "AnaTupleFileList"]
         if self.anaTuple_version or self.ana_version:
-            flavours = [f for f in flavours if f != "AnaTupleFileList"]
-        return flavours
+            v = self.ana_version or self.anaTuple_version
+            return ["core", ("AnaTupleFileList", v)]
+        return ["core", "AnaTupleFileList"]
 
     def workflow_requires(self):
         reqs = super().workflow_requires()
@@ -656,10 +643,10 @@ class HistMergerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 
     @property
     def bundle_flavours(self):
-        flavours = ["core", "AnaTupleFileList"]
         if self.anaTuple_version or self.ana_version:
-            flavours = [f for f in flavours if f != "AnaTupleFileList"]
-        return flavours
+            v = self.ana_version or self.anaTuple_version
+            return ["core", ("AnaTupleFileList", v)]
+        return ["core", "AnaTupleFileList"]
 
     def workflow_requires(self):
         reqs = super().workflow_requires()
@@ -875,9 +862,11 @@ class AnalysisCacheTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 
     @property
     def bundle_flavours(self):
-        flavours = ["core", "AnaTupleFileList"]
         if self.anaTuple_version or self.ana_version:
-            flavours = [f for f in flavours if f != "AnaTupleFileList"]
+            v = self.ana_version or self.anaTuple_version
+            flavours = ["core", ("AnaTupleFileList", v)]
+        else:
+            flavours = ["core", "AnaTupleFileList"]
         if (
             self.global_params.get("payload_producers", {})
             .get(self.producer_to_run, {})
@@ -909,19 +898,6 @@ class AnalysisCacheTask(Task, HTCondorWorkflow, law.LocalWorkflow):
     def workflow_requires(self):
         reqs = super().workflow_requires()
         ana_tuple_version = self.ana_version or self.anaTuple_version
-        # If --anaTuple-version (or --ana-version) was specified on the command, prune the "AnaTupleFileList" bundle
-        # at our version. The user is explicitly using a different version for the pre-ana/plan side,
-        # so we must not require the bundle at our version (it would pull dev production of the plan).
-        if self.anaTuple_version or self.ana_version:
-            if "bundles" in reqs:
-                reqs["bundles"] = [
-                    b
-                    for b in reqs.get("bundles", [])
-                    if not (
-                        hasattr(b, "flavour")
-                        and getattr(b, "flavour", None) == "AnaTupleFileList"
-                    )
-                ]
         merge_organization_complete = AnaTupleFileListTask.req(
             self,
             branches=(),
@@ -1177,10 +1153,10 @@ class HistPlotTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 
     @property
     def bundle_flavours(self):
-        flavours = ["core", "AnaTupleFileList"]
         if self.anaTuple_version or self.ana_version:
-            flavours = [f for f in flavours if f != "AnaTupleFileList"]
-        return flavours
+            v = self.ana_version or self.anaTuple_version
+            return ["core", ("AnaTupleFileList", v)]
+        return ["core", "AnaTupleFileList"]
 
     def workflow_requires(self):
         reqs = super().workflow_requires()
@@ -1402,10 +1378,10 @@ class AnalysisCacheAggregationTask(Task, HTCondorWorkflow, law.LocalWorkflow):
 
     @property
     def bundle_flavours(self):
-        flavours = ["core", "AnaTupleFileList"]
         if self.anaTuple_version or self.ana_version:
-            flavours = [f for f in flavours if f != "AnaTupleFileList"]
-        return flavours
+            v = self.ana_version or self.anaTuple_version
+            return ["core", ("AnaTupleFileList", v)]
+        return ["core", "AnaTupleFileList"]
 
     def __init__(self, *args, **kwargs):
         ana_v = kwargs.get("ana_version") or kwargs.get("anaCache_version")
