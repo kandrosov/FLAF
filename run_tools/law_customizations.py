@@ -58,7 +58,7 @@ class Task(law.Task):
         default="",
         significant=False,
         description="If set, forces version for upstream AnaTuple/AnaProd tasks "
-        "(InputFileTask, AnaTuple*List*, AnaTupleMerge, ...). Intended for --bundle against central vN.",
+        "(InputFileTask, AnaTuple*List*, AnaTupleMerge, ...).",
     )
 
     anaCache_version = luigi.Parameter(
@@ -559,7 +559,7 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
         if self.bundle and self.bundle_flavours:
             if not isinstance(self.fs_default, WLCGFileSystem):
                 raise RuntimeError(
-                    "--bundle requires fs_default to be a remote filesystem (davs://, root://, …)"
+                    "--bundle requires fs_default to be a remote filesystem (davs://, root://, ...)"
                 )
             bundle_parts = []
             for item in self.bundle_flavours:
@@ -611,8 +611,6 @@ class HTCondorWorkflow(law.htcondor.HTCondorWorkflow):
 #
 # Use the stable extension point: obtain the base proxy class from whatever
 # the current law version has configured on HTCondorWorkflow.workflow_proxy_cls.
-# This ensures the exact code runs in CI (which uses the pinned flaf_env law) and
-# in production without version-specific guards or hidden fallbacks.
 
 BundleAwareHTCondorWorkflowProxyBase = HTCondorWorkflow.workflow_proxy_cls
 
