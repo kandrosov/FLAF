@@ -493,7 +493,16 @@ class AnaTupleFileListTask(AnaTupleFileListBuilderTask):
         super(AnaTupleFileListTask, self).__init__(*args, **kwargs)
 
     def workflow_requires(self):
-        reqs = super().workflow_requires()
+        # Do not call super() (which would run the parent Builder's workflow_requires and
+        # potentially add production requirements for AnaTupleFileTask/InputFileTask based
+        # on missing local InputFile lists for this version).
+        # For the "use existing central anaTuples" case (overriding FileListTask-version
+        # to a production version where the remote plan exists), we only want to require
+        # the Builder itself. The Builder (for this dataset/branch) will prune its own
+        # production deps if its remote plan on fs_anaTuple exists.
+        # This prevents InputFileTask from appearing under an "existing" FileListTask
+        # even when local input lists for the vXXXX slot are absent.
+        reqs = {}
         reqs["AnaTupleFileListBuilderTask"] = AnaTupleFileListBuilderTask.req(self)
         return reqs
 
