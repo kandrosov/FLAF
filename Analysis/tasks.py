@@ -29,6 +29,20 @@ class HistTupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
         merge_organization_complete = AnaTupleFileListTask.req(
             self, version=ana_v, branches=()
         ).complete()
+        if merge_organization_complete:
+            # When using existing central anaTuples at ana_v, do not require the "AnaTupleFileList"
+            # bundle at our (dev) version. That bundle would require the dev-side plan JSONs,
+            # which don't exist and would trigger unwanted production of InputFileTask etc.
+            # The plan is available on the central fs_anaTuple for the tasks that need it.
+            if "bundles" in reqs:
+                reqs["bundles"] = [
+                    b
+                    for b in reqs.get("bundles", [])
+                    if not (
+                        hasattr(b, "flavour")
+                        and getattr(b, "flavour", None) == "AnaTupleFileList"
+                    )
+                ]
         if not merge_organization_complete:
             req_dict = {
                 "AnaTupleFileListTask": AnaTupleFileListTask.req(
@@ -863,6 +877,20 @@ class AnalysisCacheTask(Task, HTCondorWorkflow, law.LocalWorkflow):
         merge_organization_complete = AnaTupleFileListTask.req(
             self, version=ana_v, branches=()
         ).complete()
+        if merge_organization_complete:
+            # When using existing central anaTuples at ana_v, do not require the "AnaTupleFileList"
+            # bundle at our (dev) version. That bundle would require the dev-side plan JSONs,
+            # which don't exist and would trigger unwanted production of InputFileTask etc.
+            # The plan is available on the central fs_anaTuple for the tasks that need it.
+            if "bundles" in reqs:
+                reqs["bundles"] = [
+                    b
+                    for b in reqs.get("bundles", [])
+                    if not (
+                        hasattr(b, "flavour")
+                        and getattr(b, "flavour", None) == "AnaTupleFileList"
+                    )
+                ]
         if not merge_organization_complete:
             req_dict = {
                 "AnaTupleFileListTask": AnaTupleFileListTask.req(
