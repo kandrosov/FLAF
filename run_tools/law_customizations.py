@@ -87,7 +87,7 @@ class Task(law.Task):
         significant=False,
         description="If set, combines the effects of --anaTuple-version and --anaCache-version "
         "(single flag for dev against central AnaTuples + AnaCaches at the same production version). "
-        "Falls back to the more specific --ana*-version or the task's own 'version'.",
+        "When used, self.ana_version in code will be this value; sites fall back with 'or self.anaTuple_version or self.version'.",
     )
 
     def __init__(self, *args, **kwargs):
@@ -169,29 +169,6 @@ class Task(law.Task):
 
     def ana_data_path(self):
         return os.getenv("ANALYSIS_DATA_PATH")
-
-    @property
-    def ana_version(self):
-        """Effective version to use for AnaTuple-related tasks (respects --ana-version or --anaTuple-version)."""
-        # Safe access to the 'ana_version' param value (same name as this property) to avoid recursion.
-        try:
-            v = object.__getattribute__(self, "ana_version")
-            if v:
-                return v
-        except AttributeError:
-            pass
-        return self.anaTuple_version or self.version
-
-    @property
-    def ana_cache_version(self):
-        """Effective version to use for AnalysisCacheTask/AggregationTask (respects --ana-version or --anaCache-version)."""
-        try:
-            v = object.__getattribute__(self, "ana_version")
-            if v:
-                return v
-        except AttributeError:
-            pass
-        return self.anaCache_version or self.version
 
     def local_path(self, *path):
         parts = (self.ana_data_path(),) + self.store_parts() + path
