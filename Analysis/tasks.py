@@ -12,6 +12,7 @@ from FLAF.run_tools.law_customizations import (
     copy_param,
 )
 from FLAF.AnaProd.tasks import (
+    AnaTupleFileListBuilderTask,
     AnaTupleFileListTask,
     AnaTupleMergeTask,
 )
