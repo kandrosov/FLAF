@@ -27,9 +27,10 @@ class HistTupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
     def workflow_requires(self):
         reqs = super().workflow_requires()
         ana_v = self.ana_version
-        # Early prune based on Builder at ana_v (remote plan) -- more reliable for --anaTuple-version.
-        builder = AnaTupleFileListBuilderTask.req(self, version=ana_v, branches=())
-        if builder.complete():
+        # If --anaTuple-version was specified on the command, prune the "AnaTupleFileList" bundle
+        # at our version. The user is explicitly using a different version for the pre-ana/plan side,
+        # so we must not require the bundle at our version (it would pull dev production of the plan).
+        if self.ana_tuple_version:
             if "bundles" in reqs:
                 reqs["bundles"] = [
                     b
@@ -887,9 +888,10 @@ class AnalysisCacheTask(Task, HTCondorWorkflow, law.LocalWorkflow):
     def workflow_requires(self):
         reqs = super().workflow_requires()
         ana_v = self.ana_version
-        # Early prune based on Builder at ana_v (remote plan) -- more reliable for --anaTuple-version.
-        builder = AnaTupleFileListBuilderTask.req(self, version=ana_v, branches=())
-        if builder.complete():
+        # If --anaTuple-version was specified on the command, prune the "AnaTupleFileList" bundle
+        # at our version. The user is explicitly using a different version for the pre-ana/plan side,
+        # so we must not require the bundle at our version (it would pull dev production of the plan).
+        if self.ana_tuple_version:
             if "bundles" in reqs:
                 reqs["bundles"] = [
                     b
