@@ -53,41 +53,24 @@ class Task(law.Task):
     model = luigi.Parameter(default="")
     user_custom = luigi.Parameter(default="")
 
-    # Convenience for "run on pre-produced central AnaTuples".
-    # Users pass a single --anaTuple-version v2605a (the name the user requested).
-    # This value is used as the effective version for all pre-AnaTuple / AnaProd tasks
-    # (InputFileTask, AnaTupleFile*, AnaTuple*List*, AnaTupleMerge, and the AnaTupleFileList
-    # requirements coming out of HistTupleProducerTask / AnalysisCache* etc.).
-    # It prevents having to list many individual --AnaTuple*Task-version and
-    # --AnalysisCache*Task-version flags, and avoids version skew in the presence of --bundle
-    # (the various "core", "inputFileList", "AnaTupleFileList" bundle flavours).
+    # Convenience parameters for using centrally produced AnaTuples/AnaCaches (see memory on comments).
     anaTuple_version = luigi.Parameter(
         default="",
         significant=False,
-        description="If set, forces the version used for all upstream AnaTuple/AnaProd tasks "
-        "(InputFileTask, AnaTupleFile*, AnaTuple*List*, AnaTupleMerge, and the "
-        "AnaTupleFileList requirements from Hist/AnalysisCache tasks). "
-        "Falls back to the task's own 'version'. Intended for --bundle runs against "
-        "central pre-produced AnaTuples while your own --version is used for final outputs.",
+        description="If set, forces version for upstream AnaTuple/AnaProd tasks "
+        "(InputFileTask, AnaTuple*List*, AnaTupleMerge, ...). Intended for --bundle against central vN.",
     )
 
-    # Convenience for central pre-produced AnaCaches (post-AnaTuple payload producers).
     anaCache_version = luigi.Parameter(
         default="",
         significant=False,
-        description="If set, forces the version used for AnalysisCacheTask and "
-        "AnalysisCacheAggregationTask (central pre-produced AnaCaches for BtagShape etc.). "
-        "Falls back to the task's own 'version'. Intended for --bundle runs against "
-        "central pre-produced AnaCaches while your own --version is used for final outputs.",
+        description="If set, forces version for AnalysisCacheTask/AnalysisCacheAggregationTask (central BtagShape etc.).",
     )
 
-    # Combined convenience for both central AnaTuples and central AnaCaches at the same version.
     ana_version = luigi.Parameter(
         default="",
         significant=False,
-        description="If set, combines the effects of --anaTuple-version and --anaCache-version "
-        "(single flag for dev against central AnaTuples + AnaCaches at the same production version). "
-        "When used, self.ana_version in code will be this value; sites fall back with 'or self.anaTuple_version or self.version'.",
+        description="If set, combines --anaTuple-version and --anaCache-version (single flag for both).",
     )
 
     def __init__(self, *args, **kwargs):
