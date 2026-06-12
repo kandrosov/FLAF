@@ -66,7 +66,7 @@ class HistTupleProducerTask(Task, HTCondorWorkflow, law.LocalWorkflow):
                             branches=(),
                             customisations=self.customisations,
                             producer_to_run=producer_to_run,
-                            ana_tuple_version=self.ana_tuple_version,
+                            anaTuple_version=self.anaTuple_version,
                         )
                     )
 

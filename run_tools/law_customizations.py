@@ -38,7 +38,7 @@ class Task(law.Task):
     """
 
     version = luigi.Parameter()
-    prefer_params_cli = ["version", "ana_tuple_version", "tasks_per_job"]
+    prefer_params_cli = ["version", "anaTuple_version", "tasks_per_job"]
     period = luigi.Parameter()
     customisations = luigi.Parameter(default="")
     test = luigi.IntParameter(default=-1)
@@ -48,13 +48,14 @@ class Task(law.Task):
     user_custom = luigi.Parameter(default="")
 
     # Convenience for "run on pre-produced central AnaTuples".
-    # When set on a command (e.g. --ana_tuple_version v2605a), tasks that produce
-    # or consume AnaTuples (AnaProd/* + the Hist/Analysis tasks that depend on them)
-    # will use this as the effective version for AnaTuple* tasks.
-    # This avoids having to spell out --AnaTupleFileListTask-version, --AnaTupleMergeTask-version,
-    # --AnalysisCacheTask-version etc. individually, and prevents version skew between
-    # the different pre-anaTuple tasks in the presence of --bundle.
-    ana_tuple_version = luigi.Parameter(
+    # Users pass a single --anaTuple-version v2605a (the name the user requested).
+    # This value is used as the effective version for all pre-AnaTuple / AnaProd tasks
+    # (InputFileTask, AnaTupleFile*, AnaTuple*List*, AnaTupleMerge, and the AnaTupleFileList
+    # requirements coming out of HistTupleProducerTask / AnalysisCache* etc.).
+    # It prevents having to list many individual --AnaTuple*Task-version and
+    # --AnalysisCache*Task-version flags, and avoids version skew in the presence of --bundle
+    # (the various "core", "inputFileList", "AnaTupleFileList" bundle flavours).
+    anaTuple_version = luigi.Parameter(
         default="",
         significant=False,
         description="If set, forces the version used for all upstream AnaTuple/AnaProd tasks "
@@ -146,8 +147,8 @@ class Task(law.Task):
 
     @property
     def ana_version(self):
-        """Effective version to use for AnaTuple-related tasks (respects ana_tuple_version override)."""
-        return self.ana_tuple_version or self.version
+        """Effective version to use for AnaTuple-related tasks (respects --anaTuple-version)."""
+        return self.anaTuple_version or self.version
 
     def local_path(self, *path):
         parts = (self.ana_data_path(),) + self.store_parts() + path
