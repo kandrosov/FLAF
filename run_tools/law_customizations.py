@@ -53,7 +53,7 @@ class Task(law.Task):
     model = luigi.Parameter(default="")
     user_custom = luigi.Parameter(default="")
 
-    # Convenience parameters for using centrally produced AnaTuples/AnaCaches (see memory on comments).
+    # Convenience parameters for using centrally produced AnaTuples/AnaCaches.
     anaTuple_version = luigi.Parameter(
         default="",
         significant=False,
